@@ -1,19 +1,34 @@
-
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime
+import os
+from waitress import serve
 
-app = Flask(__name__)
+# 🌿 Flask App Setup
+app = Flask(__name__, static_folder='../frontend', static_url_path='/')
 CORS(app)
 
-# 🔗 MongoDB Connection
-MONGO_URI = "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0"
+# 🌿 MongoDB Connection (using environment variable)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0")
 
-client = MongoClient(MONGO_URI)
-db = client["sensors"]
-temp_collection = db["temperature_data"]
-relay_collection = db["relay_control"]
+try:
+    client = MongoClient(MONGO_URI)
+    db = client["sensors"]
+    temp_collection = db["temperature_data"]
+    relay_collection = db["relay_control"]
+    print("✅ MongoDB Connected Successfully")
+except Exception as e:
+    print("❌ MongoDB Connection Error:", e)
+
+# 🌿 Serve Frontend Files
+@app.route('/')
+def index():
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_file(path):
+    return send_from_directory('../frontend', path)
 
 # 🟢 POST - Receive temperature data from ESP32
 @app.route('/sensors/data', methods=['POST'])
@@ -32,8 +47,7 @@ def save_temp():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# 🟢 GET - Fetch all temperature records (for web dashboard)
+# 🟢 GET - Fetch all temperature records
 @app.route('/sensors/data', methods=['GET'])
 def get_all_data():
     try:
@@ -50,7 +64,6 @@ def get_all_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 # 🟢 GET - Fetch latest temperature record
 @app.route('/sensors/latest', methods=['GET'])
 def get_latest():
@@ -66,7 +79,6 @@ def get_latest():
         return jsonify(latest), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # 🟢 POST - Control relay ON/OFF
 @app.route('/sensors/control/<device>', methods=['POST'])
@@ -88,7 +100,6 @@ def control_device(device):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 # 🟢 GET - Get current relay state
 @app.route('/sensors/control/<device>', methods=['GET'])
 def get_relay_state(device):
@@ -105,15 +116,6 @@ def get_relay_state(device):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# 🟢 Root route
-@app.route('/')
-def home():
-    return jsonify({"message": "Polyhouse Temperature Monitoring API is running"}), 200
-
-
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=8080, debug=True)
+# 🌿 Run app
 if __name__ == "__main__":
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=8080)
+    serve(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
