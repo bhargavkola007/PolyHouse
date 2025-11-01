@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>🌡️ Temperature Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🌡️ Polyhouse Temperature Controller</h1>
+    <button class="nav-btn" onclick="window.location.href='visualization.html'">📊 View Chart</button>
+  </header>
+
+  <main class="container">
+    <div class="sensor-card">
+      <h2>Water Temperature</h2>
+      <div class="temp-display">
+        <span id="waterTemp">--</span><span class="unit">°C</span>
+      </div>
+
+      <div class="btn-group">
+        <button class="on-btn" onclick="controlSensor('waterTemp','ON')">Turn ON</button>
+        <button class="off-btn" onclick="controlSensor('waterTemp','OFF')">Turn OFF</button>
+      </div>
+
+      <p class="timestamp">🕒 Last Updated: <span id="ts">--</span></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 Centurion University | IoT Polyhouse Monitoring</p>
+  </footer>
+
+  <script>
+    const API_ROOT = "http://localhost:8080/sensors"; // Flask backend URL
+
+    async function loadLatest() {
+      try {
+        const res = await fetch(API_ROOT + "/latest");
+        if (res.ok) {
+          const d = await res.json();
+          document.getElementById("waterTemp").textContent = d.waterTemperature ?? "--";
+          document.getElementById("ts").textContent = d.timestamp ?? "--";
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    }
+
+    function updateSensorStateUI(sensor, state) {
+      const card = document.querySelector('.sensor-card');
+      card.classList.toggle('on', state === 'ON');
+      card.classList.toggle('off', state === 'OFF');
+    }
+
+    async function controlSensor(sensor, state) {
+      try {
+        await fetch(`${API_ROOT}/control/${sensor}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state })
+        });
+        alert(`${sensor} turned ${state}`);
+        updateSensorStateUI(sensor, state);
+      } catch (err) {
+        console.error(err);
+        alert("Error communicating with device.");
+      }
+    }
+
+    loadLatest();
+    setInterval(loadLatest, 5000);
+  </script>
+</body>
+</html>

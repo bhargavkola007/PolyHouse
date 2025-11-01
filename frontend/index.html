@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Polyhouse Temperature Monitoring - CUTM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <img src="cutm logo.png" class="logo" alt="CUTM">
+    <div class="titles">
+      <h1>Centurion University Of Technology and Management</h1>
+      <h2>POLYHOUSE TEMPERATURE MONITORING</h2>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <div class="left-controls">
+        <label>Show
+          <select id="pageSize">
+            <option>10</option>
+            <option>25</option>
+            <option>50</option>
+          </select>
+          entries
+        </label>
+      </div>
+      <div class="right-controls">
+        <input id="searchBox" placeholder="Search..." />
+        <button id="viewDataBtn">View Data</button>
+      </div>
+    </section>
+
+    <div class="table-wrapper">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Water Temp (°C)</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prevBtn">⟨ Prev</button>
+      <span id="pageInfo"></span>
+      <button id="nextBtn">Next ⟩</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 Centurion University | IoT Polyhouse Temperature Monitoring</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
