@@ -1,5 +1,5 @@
 // const API_ROOT = "http://localhost:8080/sensors";
-const API_ROOT = "https://polyhouse-backend.onrender.com/sensors";
+const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
 const tbody = document.querySelector("#dataTable tbody");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
