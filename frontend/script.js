@@ -1,4 +1,5 @@
-const API_ROOT = "http://localhost:8080/sensors";
+// const API_ROOT = "http://localhost:8080/sensors";
+const API_ROOT = "https://your-backend-service.onrender.com/sensors";
 const tbody = document.querySelector("#dataTable tbody");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
