@@ -7,10 +7,15 @@ from waitress import serve
 
 # 🌿 Flask App Setup
 app = Flask(__name__, static_folder='../frontend', static_url_path='/')
-CORS(app)
 
-# 🌿 MongoDB Connection (using environment variable)
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0")
+# ✅ Enable CORS for your frontend domain only (recommended)
+CORS(app, resources={r"/*": {"origins": "https://polyhouse-qqiy.onrender.com"}})
+
+# 🌿 MongoDB Connection
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0"
+)
 
 try:
     client = MongoClient(MONGO_URI)
@@ -21,7 +26,7 @@ try:
 except Exception as e:
     print("❌ MongoDB Connection Error:", e)
 
-# 🌿 Serve Frontend Files
+# 🌿 Serve Frontend Files (optional — you already host frontend separately)
 @app.route('/')
 def index():
     return send_from_directory('../frontend', 'index.html')
