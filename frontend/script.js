@@ -1,5 +1,8 @@
-// const API_ROOT = "http://localhost:8080/sensors";
-const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
+const API_ROOT =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8080/sensors"
+    : "https://polyhouse-qqiy.onrender.com/sensors";
+
 const tbody = document.querySelector("#dataTable tbody");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -20,6 +23,35 @@ async function loadData() {
   } catch (err) {
     console.error("Error fetching data:", err);
   }
+}
+function exportToCSV() {
+  if (!allData.length) {
+    alert("No data available to export!");
+    return;
+  }
+
+  // Create CSV header
+  const headers = ["S.No", "Water Temperature (°C)", "Timestamp"];
+  const rows = allData.map((d, i) => [
+    i + 1,
+    d.waterTemperature ?? "-",
+    d.timestamp ?? "-"
+  ]);
+
+  // Combine headers and rows
+  const csvContent = [headers, ...rows]
+    .map(e => e.join(","))
+    .join("\n");
+
+  // Create a blob and trigger download
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `polyhouse_data_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function renderTable() {
@@ -78,5 +110,6 @@ nextBtn.addEventListener("click", () => {
 });
 
 viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
+document.getElementById("exportBtn").addEventListener("click", exportToCSV);
 
 loadData();

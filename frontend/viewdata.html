@@ -33,45 +33,99 @@
     <p>© 2025 Centurion University | IoT Polyhouse Monitoring</p>
   </footer>
 
-  <script>
-    const API_ROOT = "http://localhost:8080/sensors"; // Flask backend URL
+ <script>
+const API_ROOT =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8080/sensors"
+    : "https://polyhouse-qqiy.onrender.com/sensors";
 
-    async function loadLatest() {
-      try {
-        const res = await fetch(API_ROOT + "/latest");
-        if (res.ok) {
-          const d = await res.json();
-          document.getElementById("waterTemp").textContent = d.waterTemperature ?? "--";
-          document.getElementById("ts").textContent = d.timestamp ?? "--";
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
+// 🟢 Load latest temperature
+async function loadLatest() {
+  try {
+    const res = await fetch(`${API_ROOT}/latest`);
+    if (res.ok) {
+      const d = await res.json();
+      document.getElementById("waterTemp").textContent = d.waterTemperature ?? "--";
+      document.getElementById("ts").textContent = d.timestamp ?? "--";
     }
+  } catch (err) {
+    console.error("❌ Error fetching temperature:", err);
+  }
+}
 
-    function updateSensorStateUI(sensor, state) {
-      const card = document.querySelector('.sensor-card');
-      card.classList.toggle('on', state === 'ON');
-      card.classList.toggle('off', state === 'OFF');
+// 🟢 Load relay state from backend
+async function loadSensorState(sensor) {
+  try {
+    const res = await fetch(`${API_ROOT}/control/${sensor}`);
+    if (res.ok) {
+      const d = await res.json();
+      updateSensorStateUI(sensor, d.state);
     }
+  } catch (err) {
+    console.error("❌ Error fetching sensor state:", err);
+  }
+}
 
-    async function controlSensor(sensor, state) {
-      try {
-        await fetch(`${API_ROOT}/control/${sensor}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state })
-        });
-        alert(`${sensor} turned ${state}`);
-        updateSensorStateUI(sensor, state);
-      } catch (err) {
-        console.error(err);
-        alert("Error communicating with device.");
-      }
+// 🟢 Update UI appearance and button states
+function updateSensorStateUI(sensor, state) {
+  const card = document.querySelector(".sensor-card");
+  const onBtn = document.querySelector(".on-btn");
+  const offBtn = document.querySelector(".off-btn");
+  const statusLabel = document.getElementById("statusLabel");
+
+  card.classList.toggle("on", state === "ON");
+  card.classList.toggle("off", state === "OFF");
+
+  onBtn.disabled = state === "ON";
+  offBtn.disabled = state === "OFF";
+
+  statusLabel.textContent = state;
+  statusLabel.style.color = state === "ON" ? "#00c853" : "#d32f2f";
+}
+
+// 🟢 Handle ON/OFF control
+async function controlSensor(sensor, state) {
+  const onBtn = document.querySelector(".on-btn");
+  const offBtn = document.querySelector(".off-btn");
+
+  // Disable both while processing
+  onBtn.disabled = true;
+  offBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_ROOT}/control/${sensor}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state })
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      alert(result.message);
+      updateSensorStateUI(sensor, state);
+    } else {
+      alert("⚠️ Failed to change sensor state.");
     }
+  } catch (err) {
+    console.error("❌ Control error:", err);
+    alert("Error communicating with device.");
+  } finally {
+    // Re-enable buttons after 2 seconds
+    setTimeout(() => {
+      onBtn.disabled = false;
+      offBtn.disabled = false;
+    }, 2000);
+  }
+}
 
-    loadLatest();
-    setInterval(loadLatest, 5000);
-  </script>
+// 🟢 Initial load
+loadLatest();
+loadSensorState("waterTemp");
+
+// 🟢 Periodic refresh
+setInterval(loadLatest, 5000);
+setInterval(() => loadSensorState("waterTemp"), 7000);
+</script>
+
 </body>
 </html>

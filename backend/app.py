@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 from waitress import serve
 
@@ -25,6 +25,9 @@ try:
     print("✅ MongoDB Connected Successfully")
 except Exception as e:
     print("❌ MongoDB Connection Error:", e)
+
+# 🌿 IST Timezone
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # 🌿 Serve Frontend Files (for fallback)
 @app.route('/')
@@ -53,7 +56,7 @@ def save_temp():
 
         doc = {
             "temperature": float(temperature),
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.utcnow()  # stored in UTC
         }
         temp_collection.insert_one(doc)
         print(f"🌡️ Received temperature: {temperature}")
@@ -64,7 +67,7 @@ def save_temp():
         return jsonify({"error": str(e)}), 500
 
 
-# 🟢 GET - Fetch all temperature records
+# 🟢 GET - Fetch all temperature records (converted to IST)
 @app.route('/sensors/data', methods=['GET'])
 def get_all_data():
     try:
@@ -73,7 +76,7 @@ def get_all_data():
             {
                 "_id": str(d["_id"]),
                 "waterTemperature": d.get("temperature"),
-                "timestamp": d["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": d["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
             }
             for d in data
         ]
@@ -83,7 +86,7 @@ def get_all_data():
         return jsonify({"error": str(e)}), 500
 
 
-# 🟢 GET - Fetch latest temperature record
+# 🟢 GET - Fetch latest temperature record (converted to IST)
 @app.route('/sensors/latest', methods=['GET'])
 def get_latest():
     try:
@@ -91,10 +94,12 @@ def get_latest():
         if not latest:
             return jsonify({"temperature": None}), 404
 
+        ist_time = latest["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
+
         return jsonify({
             "_id": str(latest["_id"]),
             "waterTemperature": latest.get("temperature"),
-            "timestamp": latest["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
         }), 200
     except Exception as e:
         print("❌ Error fetching latest:", e)
@@ -125,16 +130,17 @@ def control_device(device):
         return jsonify({"error": str(e)}), 500
 
 
-# 🟢 GET - Get current relay state
+# 🟢 GET - Get current relay state (converted to IST)
 @app.route('/sensors/control/<device>', methods=['GET'])
 def get_relay_state(device):
     try:
         record = relay_collection.find_one({"device": device})
         if record:
+            ist_time = record["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
             return jsonify({
                 "device": device,
                 "state": record["state"],
-                "timestamp": record["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
             }), 200
         else:
             # Default state is OFF

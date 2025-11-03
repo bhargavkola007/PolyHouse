@@ -28,7 +28,11 @@
   </footer>
 
   <script>
-    const API_ROOT = "http://localhost:8080/sensors";
+const API_ROOT =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8080/sensors"
+    : "https://polyhouse-qqiy.onrender.com/sensors";
+
 
     async function loadData() {
       try {
