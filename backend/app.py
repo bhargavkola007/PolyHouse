@@ -8,8 +8,8 @@ from waitress import serve
 # 🌿 Flask App Setup
 app = Flask(__name__, static_folder='../frontend', static_url_path='/')
 
-# ✅ Enable CORS for your frontend domain only (recommended)
-CORS(app, resources={r"/*": {"origins": "https://polyhouse-qqiy.onrender.com"}})
+# ✅ Enable CORS (allow Render frontend + ESP device)
+CORS(app, resources={r"/*": {"origins": ["*", "https://polyhouse-qqiy.onrender.com"]}})
 
 # 🌿 MongoDB Connection
 MONGO_URI = os.getenv(
@@ -26,33 +26,43 @@ try:
 except Exception as e:
     print("❌ MongoDB Connection Error:", e)
 
-# 🌿 Serve Frontend Files (optional — you already host frontend separately)
+# 🌿 Serve Frontend Files (for fallback)
 @app.route('/')
 def index():
     return send_from_directory('../frontend', 'index.html')
-@app.route('/health')
-def health():
-    return jsonify({"status": "ok"}), 200
+
 @app.route('/<path:path>')
 def serve_file(path):
     return send_from_directory('../frontend', path)
+
+# ✅ Health check
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"}), 200
+
 
 # 🟢 POST - Receive temperature data from ESP32
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
     try:
-        data = request.get_json()
-        if not data or "temperature" not in data:
-            return jsonify({"error": "Invalid data"}), 400
+        data = request.get_json(force=True)
+        temperature = data.get("temperature")
+
+        if temperature is None:
+            return jsonify({"error": "Missing 'temperature' field"}), 400
 
         doc = {
-            "temperature": data["temperature"],
+            "temperature": float(temperature),
             "timestamp": datetime.utcnow()
         }
         temp_collection.insert_one(doc)
+        print(f"🌡️ Received temperature: {temperature}")
         return jsonify({"message": "Temperature saved successfully!"}), 200
+
     except Exception as e:
+        print("❌ Error saving temperature:", e)
         return jsonify({"error": str(e)}), 500
+
 
 # 🟢 GET - Fetch all temperature records
 @app.route('/sensors/data', methods=['GET'])
@@ -69,32 +79,37 @@ def get_all_data():
         ]
         return jsonify(formatted), 200
     except Exception as e:
+        print("❌ Error fetching all data:", e)
         return jsonify({"error": str(e)}), 500
+
 
 # 🟢 GET - Fetch latest temperature record
 @app.route('/sensors/latest', methods=['GET'])
 def get_latest():
     try:
-        doc = temp_collection.find().sort("timestamp", -1).limit(1)
-        latest = next(doc, None)
+        latest = temp_collection.find_one(sort=[("timestamp", -1)])
         if not latest:
             return jsonify({"temperature": None}), 404
 
-        latest["_id"] = str(latest["_id"])
-        latest["timestamp"] = latest["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
-        latest["waterTemperature"] = latest.pop("temperature", None)
-        return jsonify(latest), 200
+        return jsonify({
+            "_id": str(latest["_id"]),
+            "waterTemperature": latest.get("temperature"),
+            "timestamp": latest["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        }), 200
     except Exception as e:
+        print("❌ Error fetching latest:", e)
         return jsonify({"error": str(e)}), 500
+
 
 # 🟢 POST - Control relay ON/OFF
 @app.route('/sensors/control/<device>', methods=['POST'])
 def control_device(device):
     try:
-        data = request.get_json()
+        data = request.get_json(force=True)
         state = data.get("state", "").upper()
+
         if state not in ["ON", "OFF"]:
-            return jsonify({"error": "Invalid state"}), 400
+            return jsonify({"error": "Invalid state (use ON or OFF)"}), 400
 
         relay_collection.update_one(
             {"device": device},
@@ -102,10 +117,13 @@ def control_device(device):
             upsert=True
         )
 
-        print(f"Relay {device} turned {state}")
+        print(f"⚡ Relay '{device}' turned {state}")
         return jsonify({"message": f"{device} turned {state}"}), 200
+
     except Exception as e:
+        print("❌ Relay control error:", e)
         return jsonify({"error": str(e)}), 500
+
 
 # 🟢 GET - Get current relay state
 @app.route('/sensors/control/<device>', methods=['GET'])
@@ -119,10 +137,15 @@ def get_relay_state(device):
                 "timestamp": record["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
             }), 200
         else:
+            # Default state is OFF
             return jsonify({"device": device, "state": "OFF"}), 200
     except Exception as e:
+        print("❌ Relay state error:", e)
         return jsonify({"error": str(e)}), 500
 
-# 🌿 Run app
+
+# 🌿 Run app (Waitress for production)
 if __name__ == "__main__":
-    serve(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    port = int(os.getenv("PORT", 8080))
+    print(f"🚀 Server running on port {port}")
+    serve(app, host="0.0.0.0", port=port)
