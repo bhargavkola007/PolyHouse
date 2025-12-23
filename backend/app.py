@@ -6,6 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 import os
 from waitress import serve
+
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
 
 
@@ -155,10 +156,7 @@ def signup():
         "status": "PENDING",
         "createdAt": created_time
     })
-
-    # 🔹 Use Render URL safely
-    BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
-
+    
     review_link = f"{BASE_URL}/admin/review?email={email}"
 
     send_email(

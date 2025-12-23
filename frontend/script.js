@@ -67,9 +67,9 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 if (profileIcon && dropdown && logoutBtn) {
   // Toggle dropdown
-  profileIcon.addEventListener("click", () => {
-    dropdown.style.display =
-      dropdown.style.display === "block" ? "none" : "block";
+  profileIcon.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle("active");
   });
 
   // Logout
@@ -81,7 +81,7 @@ if (profileIcon && dropdown && logoutBtn) {
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".profile-menu")) {
-      dropdown.style.display = "none";
+      dropdown.classList.remove("active");
     }
   });
 }
