@@ -1,6 +1,6 @@
 const API_ROOT =
   window.location.hostname === "localhost"
-    ? "http://localhost:8080/sensors"
+    ? "http://10.16.251.46:8080/sensors"
     : "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");
@@ -31,7 +31,7 @@ function exportToCSV() {
   }
 
   // Create CSV header
-  const headers = ["S.No", "Water Temperature (°C)", "Timestamp"];
+  const headers = ["S.No", "Temperature (°C)", "Timestamp"];
   const rows = allData.map((d, i) => [
     i + 1,
     d.waterTemperature ?? "-",
@@ -52,6 +52,38 @@ function exportToCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+// ===== PROFILE MENU & LOGOUT =====
+
+// Remove profile icon if not logged in
+const profileMenu = document.querySelector(".profile-menu");
+if (!token && profileMenu) {
+  profileMenu.remove();
+}
+
+const profileIcon = document.getElementById("profileIcon");
+const dropdown = document.getElementById("profileDropdown");
+const logoutBtn = document.getElementById("logoutBtn");
+
+if (profileIcon && dropdown && logoutBtn) {
+  // Toggle dropdown
+  profileIcon.addEventListener("click", () => {
+    dropdown.style.display =
+      dropdown.style.display === "block" ? "none" : "block";
+  });
+
+  // Logout
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".profile-menu")) {
+      dropdown.style.display = "none";
+    }
+  });
 }
 
 function renderTable() {

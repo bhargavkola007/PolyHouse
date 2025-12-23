@@ -7,6 +7,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
+<script>
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = 'login.html';
+  }
+</script>
+
 <body>
   <header>
     <img src="cutm logo.png" class="logo" alt="CUTM">
@@ -14,6 +21,14 @@
       <h1>Centurion University Of Technology and Management</h1>
       <h2>POLYHOUSE TEMPERATURE MONITORING</h2>
     </div>
+    <div class="profile-menu">
+  <div class="profile-icon" id="profileIcon">👤</div>
+
+  <div class="profile-dropdown" id="profileDropdown">
+    <button id="logoutBtn">🚪 Logout</button>
+  </div>
+</div>
+
   </header>
 
   <main class="container">

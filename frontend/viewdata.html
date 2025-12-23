@@ -2,76 +2,297 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>🌡️ Temperature Controller</title>
+  <title>🌡️ Polyhouse Controller</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header>
-    <h1>🌡️ Polyhouse Temperature Controller</h1>
-    <button class="nav-btn" onclick="window.location.href='visualization.html'">📊 View Chart</button>
-  </header>
 
-  <main class="container">
-    <div class="sensor-card">
-      <h2>Water Temperature</h2>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* 🌿 Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #ffffff);
+      color: #333;
+    }
+
+    /* 🌿 Header */
+    header {
+      background: linear-gradient(135deg, #004d40, #00796b);
+      color: white;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    header button {
+      background: #00c853;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    header button:hover {
+      background: #00a844;
+      transform: translateY(-2px);
+    }
+
+    /* 🌿 Container */
+    .container {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    /* 🌿 Sensor Grid */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 25px;
+    }
+
+    /* 🌿 Sensor Card */
+    .sensor-card {
+      background: linear-gradient(160deg, #e0f2f1, #ffffff);
+      padding: 2rem;
+      border-radius: 18px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      transition: transform 0.3s, box-shadow 0.3s;
+      text-align: center;
+    }
+
+    .sensor-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .sensor-card h2 {
+      color: #004d40;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+
+    /* 🌿 Status */
+    .sensor-card.on {
+      border: 3px solid #00c853;
+      background: #e8f5e9;
+    }
+
+    .sensor-card.off {
+      border: 3px solid #d32f2f;
+      background: #ffebee;
+    }
+
+    .status {
+      font-weight: 600;
+    }
+
+    /* 🌿 Temperature */
+    .temp-display {
+      font-size: 3rem;
+      font-weight: 600;
+      color: #00796b;
+      margin: 1rem 0;
+    }
+
+    /* 🌿 Buttons */
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 1rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+      color: white;
+    }
+
+    .on-btn {
+      background: #43a047;
+    }
+
+    .on-btn:hover {
+      background: #2e7d32;
+    }
+
+    .off-btn {
+      background: #e53935;
+    }
+
+    .off-btn:hover {
+      background: #c62828;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* 🌿 Timestamp */
+    .sensor-card p {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    /* 🌿 Footer */
+    footer {
+      text-align: center;
+      padding: 15px;
+      background: #004d40;
+      color: white;
+      font-size: 0.9rem;
+      margin-top: 2rem;
+    }
+
+    /* 🌿 Animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 🌿 Responsive */
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+
+      .temp-display {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>🌡️ Polyhouse Temperature Controller</h1>
+  <button onclick="window.location.href='visualization.html'">📊 View Chart</button>
+</header>
+
+<main class="container">
+  <div class="sensor-grid">
+
+    <!-- RELAY 1 -->
+    <div class="sensor-card" data-sensor="relay1">
+      <h2>🔥Temperature Sensor</h2>
+
       <div class="temp-display">
-        <span id="waterTemp">--</span><span class="unit">°C</span>
+        <span id="waterTemp">--</span> °C
       </div>
+
+      <p>Status: <span class="status">--</span></p>
 
       <div class="btn-group">
-        <button class="on-btn" onclick="controlSensor('waterTemp','ON')">Turn ON</button>
-        <button class="off-btn" onclick="controlSensor('waterTemp','OFF')">Turn OFF</button>
+        <button class="on-btn">ON</button>
+        <button class="off-btn">OFF</button>
       </div>
 
-      <p class="timestamp">🕒 Last Updated: <span id="ts">--</span></p>
+      <p>🕒 <span id="ts">--</span></p>
     </div>
-  </main>
 
-  <footer>
-    <p>© 2025 Centurion University | IoT Polyhouse Monitoring</p>
-  </footer>
+    <!-- RELAY 2 -->
+    <div class="sensor-card" data-sensor="relay2">
+      <h2>🌀 Cooling Fan</h2>
+      <p>Status: <span class="status">--</span></p>
 
- <script>
+      <div class="btn-group">
+        <button class="on-btn">ON</button>
+        <button class="off-btn">OFF</button>
+      </div>
+    </div>
+
+    <!-- RELAY 3 -->
+    <div class="sensor-card" data-sensor="relay3">
+      <h2>💡 Grow Light</h2>
+      <p>Status: <span class="status">--</span></p>
+
+      <div class="btn-group">
+        <button class="on-btn">ON</button>
+        <button class="off-btn">OFF</button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  © 2025 Centurion University | IoT Polyhouse Monitoring
+</footer>
+
+<script>
 const API_ROOT =
   window.location.hostname === "localhost"
     ? "http://localhost:8080/sensors"
     : "https://polyhouse-qqiy.onrender.com/sensors";
 
-// 🟢 Load latest temperature
 async function loadLatest() {
   try {
     const res = await fetch(`${API_ROOT}/latest`);
-    if (res.ok) {
-      const d = await res.json();
-      document.getElementById("waterTemp").textContent = d.waterTemperature ?? "--";
-      document.getElementById("ts").textContent = d.timestamp ?? "--";
-    }
-  } catch (err) {
-    console.error("❌ Error fetching temperature:", err);
-  }
+    if (!res.ok) return;
+    const d = await res.json();
+    document.getElementById("waterTemp").textContent = d.waterTemperature ?? "--";
+    document.getElementById("ts").textContent = d.timestamp ?? "--";
+  } catch {}
 }
 
-// 🟢 Load relay state from backend
 async function loadSensorState(sensor) {
   try {
     const res = await fetch(`${API_ROOT}/control/${sensor}`);
-    if (res.ok) {
-      const d = await res.json();
-      updateSensorStateUI(sensor, d.state);
-    }
-  } catch (err) {
-    console.error("❌ Error fetching sensor state:", err);
-  }
+    if (!res.ok) return;
+    const d = await res.json();
+    updateSensorStateUI(sensor, d.state);
+  } catch {}
 }
 
-// 🟢 Update UI appearance and button states
 function updateSensorStateUI(sensor, state) {
-  const card = document.querySelector(".sensor-card");
-  const onBtn = document.querySelector(".on-btn");
-  const offBtn = document.querySelector(".off-btn");
-  const statusLabel = document.getElementById("statusLabel");
+  const card = document.querySelector(`.sensor-card[data-sensor="${sensor}"]`);
+  if (!card) return;
+
+  const onBtn = card.querySelector(".on-btn");
+  const offBtn = card.querySelector(".off-btn");
+  const status = card.querySelector(".status");
 
   card.classList.toggle("on", state === "ON");
   card.classList.toggle("off", state === "OFF");
@@ -79,52 +300,29 @@ function updateSensorStateUI(sensor, state) {
   onBtn.disabled = state === "ON";
   offBtn.disabled = state === "OFF";
 
-  statusLabel.textContent = state;
-  statusLabel.style.color = state === "ON" ? "#00c853" : "#d32f2f";
+  status.textContent = state;
+  status.style.color = state === "ON" ? "#00c853" : "#d32f2f";
 }
 
-// 🟢 Handle ON/OFF control
 async function controlSensor(sensor, state) {
-  const onBtn = document.querySelector(".on-btn");
-  const offBtn = document.querySelector(".off-btn");
-
-  // Disable both while processing
-  onBtn.disabled = true;
-  offBtn.disabled = true;
-
-  try {
-    const res = await fetch(`${API_ROOT}/control/${sensor}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state })
-    });
-
-    if (res.ok) {
-      const result = await res.json();
-      alert(result.message);
-      updateSensorStateUI(sensor, state);
-    } else {
-      alert("⚠️ Failed to change sensor state.");
-    }
-  } catch (err) {
-    console.error("❌ Control error:", err);
-    alert("Error communicating with device.");
-  } finally {
-    // Re-enable buttons after 2 seconds
-    setTimeout(() => {
-      onBtn.disabled = false;
-      offBtn.disabled = false;
-    }, 2000);
-  }
+  const res = await fetch(`${API_ROOT}/control/${sensor}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state })
+  });
+  if (res.ok) updateSensorStateUI(sensor, state);
 }
 
-// 🟢 Initial load
-loadLatest();
-loadSensorState("waterTemp");
+document.querySelectorAll(".sensor-card").forEach(card => {
+  const sensor = card.dataset.sensor;
+  card.querySelector(".on-btn").onclick = () => controlSensor(sensor, "ON");
+  card.querySelector(".off-btn").onclick = () => controlSensor(sensor, "OFF");
+});
 
-// 🟢 Periodic refresh
+loadLatest();
+["relay1", "relay2", "relay3"].forEach(loadSensorState);
 setInterval(loadLatest, 5000);
-setInterval(() => loadSensorState("waterTemp"), 7000);
+setInterval(() => ["relay1","relay2","relay3"].forEach(loadSensorState), 7000);
 </script>
 
 </body>

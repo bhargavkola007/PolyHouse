@@ -1,35 +1,55 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
+import smtplib
+from email.mime.text import MIMEText
 import os
 from waitress import serve
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
 
-# 🌿 Flask App Setup
+
+# ================= FLASK SETUP =================
 app = Flask(__name__, static_folder='../frontend', static_url_path='/')
+CORS(app)
 
-# ✅ Enable CORS (allow Render frontend + ESP device)
-CORS(app, resources={r"/*": {"origins": ["*", "https://polyhouse-qqiy.onrender.com"]}})
-
-# 🌿 MongoDB Connection
+# ================= DATABASE ====================
 MONGO_URI = os.getenv(
     "MONGO_URI",
     "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0"
 )
 
-try:
-    client = MongoClient(MONGO_URI)
-    db = client["sensors"]
-    temp_collection = db["temperature_data"]
-    relay_collection = db["relay_control"]
-    print("✅ MongoDB Connected Successfully")
-except Exception as e:
-    print("❌ MongoDB Connection Error:", e)
+client = MongoClient(MONGO_URI)
+db = client["sensors"]
+temp_collection = db["temperature_data"]
+relay_collection = db["relay_control"]
+users_collection = db["users"]
 
-# 🌿 IST Timezone
+print("✅ MongoDB Connected")
+
+# ================= TIMEZONE ====================
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# 🌿 Serve Frontend Files (for fallback)
+# ================= EMAIL CONFIG =================
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+ADMIN_EMAIL = "bhargavkola53@gmail.com"
+
+def send_email(to, subject, message):
+    msg = MIMEText(message)
+    msg["Subject"] = subject
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.send_message(msg)
+        print("📧 Email sent")
+    except Exception as e:
+        print("❌ Email error:", e)
+
+# ================= FRONTEND ====================
 @app.route('/')
 def index():
     return send_from_directory('../frontend', 'index.html')
@@ -38,120 +58,178 @@ def index():
 def serve_file(path):
     return send_from_directory('../frontend', path)
 
-# ✅ Health check
+# ================= HEALTH ======================
 @app.route('/health')
 def health():
     return jsonify({"status": "ok"}), 200
 
-
-# 🟢 POST - Receive temperature data from ESP32
+# ================= SENSOR APIs =================
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
-    try:
-        data = request.get_json(force=True)
-        temperature = data.get("temperature")
+    data = request.get_json(force=True)
+    temperature = data.get("temperature")
 
-        if temperature is None:
-            return jsonify({"error": "Missing 'temperature' field"}), 400
+    if temperature is None:
+        return jsonify({"error": "Temperature missing"}), 400
 
-        doc = {
-            "temperature": float(temperature),
-            "timestamp": datetime.utcnow()  # stored in UTC
-        }
-        temp_collection.insert_one(doc)
-        print(f"🌡️ Received temperature: {temperature}")
-        return jsonify({"message": "Temperature saved successfully!"}), 200
+    temp_collection.insert_one({
+        "temperature": float(temperature),
+        "timestamp": datetime.now(timezone.utc)
+    })
 
-    except Exception as e:
-        print("❌ Error saving temperature:", e)
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"message": "Temperature saved"}), 200
 
-
-# 🟢 GET - Fetch all temperature records (converted to IST)
 @app.route('/sensors/data', methods=['GET'])
-def get_all_data():
-    try:
-        data = list(temp_collection.find().sort("timestamp", -1))
-        formatted = [
-            {
-                "_id": str(d["_id"]),
-                "waterTemperature": d.get("temperature"),
-                "timestamp": d["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
-            }
-            for d in data
-        ]
-        return jsonify(formatted), 200
-    except Exception as e:
-        print("❌ Error fetching all data:", e)
-        return jsonify({"error": str(e)}), 500
+def get_all_temp():
+    data = list(temp_collection.find().sort("timestamp", -1))
+    return jsonify([
+        {
+            "waterTemperature": d["temperature"],
+            "timestamp": d["timestamp"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+        } for d in data
+    ])
 
-
-# 🟢 GET - Fetch latest temperature record (converted to IST)
 @app.route('/sensors/latest', methods=['GET'])
-def get_latest():
-    try:
-        latest = temp_collection.find_one(sort=[("timestamp", -1)])
-        if not latest:
-            return jsonify({"temperature": None}), 404
+def latest_temp():
+    d = temp_collection.find_one(sort=[("timestamp", -1)])
+    if not d:
+        return jsonify({"waterTemperature": None}), 404
 
-        ist_time = latest["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
+    return jsonify({
+        "waterTemperature": d["temperature"],
+        "timestamp": d["timestamp"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+    })
 
-        return jsonify({
-            "_id": str(latest["_id"]),
-            "waterTemperature": latest.get("temperature"),
-            "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
-        }), 200
-    except Exception as e:
-        print("❌ Error fetching latest:", e)
-        return jsonify({"error": str(e)}), 500
-
-
-# 🟢 POST - Control relay ON/OFF
+# ================= RELAY APIs ==================
 @app.route('/sensors/control/<device>', methods=['POST'])
-def control_device(device):
-    try:
-        data = request.get_json(force=True)
-        state = data.get("state", "").upper()
+def set_relay(device):
+    data = request.get_json(force=True)
+    state = data.get("state", "").upper()
 
-        if state not in ["ON", "OFF"]:
-            return jsonify({"error": "Invalid state (use ON or OFF)"}), 400
+    if state not in ["ON", "OFF"]:
+        return jsonify({"error": "Invalid state"}), 400
 
-        relay_collection.update_one(
-            {"device": device},
-            {"$set": {"state": state, "timestamp": datetime.utcnow()}},
-            upsert=True
-        )
+    relay_collection.update_one(
+        {"device": device},
+        {"$set": {
+            "state": state,
+            "timestamp": datetime.now(timezone.utc)
+        }},
+        upsert=True
+    )
 
-        print(f"⚡ Relay '{device}' turned {state}")
-        return jsonify({"message": f"{device} turned {state}"}), 200
+    return jsonify({"message": f"{device} turned {state}"}), 200
 
-    except Exception as e:
-        print("❌ Relay control error:", e)
-        return jsonify({"error": str(e)}), 500
-
-
-# 🟢 GET - Get current relay state (converted to IST)
 @app.route('/sensors/control/<device>', methods=['GET'])
-def get_relay_state(device):
-    try:
-        record = relay_collection.find_one({"device": device})
-        if record:
-            ist_time = record["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
-            return jsonify({
-                "device": device,
-                "state": record["state"],
-                "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
-            }), 200
-        else:
-            # Default state is OFF
-            return jsonify({"device": device, "state": "OFF"}), 200
-    except Exception as e:
-        print("❌ Relay state error:", e)
-        return jsonify({"error": str(e)}), 500
+def get_relay(device):
+    r = relay_collection.find_one({"device": device})
+    if not r:
+        return jsonify({"device": device, "state": "OFF"}), 200
+
+    return jsonify({
+        "device": device,
+        "state": r["state"],
+        "timestamp": r["timestamp"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+# ================= AUTH ========================
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json(force=True)
+    name = data.get("name")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not all([name, email, password]):
+        return jsonify({"message": "All fields required"}), 400
+
+    if users_collection.find_one({"email": email}):
+        return jsonify({"message": "Email already exists"}), 409
+
+    created_time = datetime.now(timezone.utc)
+
+    users_collection.insert_one({
+        "name": name,
+        "email": email,
+        "password": password,
+        "status": "PENDING",
+        "createdAt": created_time
+    })
+
+    # 🔹 Use Render URL safely
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
+
+    review_link = f"{BASE_URL}/admin/review?email={email}"
+
+    send_email(
+        ADMIN_EMAIL,
+        "New User Approval Request",
+        f"""
+New user signup request
+
+Name: {name}
+Email: {email}
+Signup Time: {created_time.astimezone(IST).strftime('%Y-%m-%d %H:%M:%S')}
+
+Review user (Approve / Reject):
+{review_link}
+"""
+    )
+
+    return jsonify({"message": "Signup successful. Await admin approval."}), 201
 
 
-# 🌿 Run app (Waitress for production)
+@app.route('/admin/review')
+def review_page():
+    return send_from_directory('../frontend', 'admin-review.html')
+
+@app.route('/admin/approve')
+def approve():
+    email = request.args.get("email")
+
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {
+            "status": "APPROVED",
+            "approvedAt": datetime.now(timezone.utc)
+        }}
+    )
+
+    send_email(email, "Account Approved", "Your account is approved.")
+    return "✅ User approved"
+
+@app.route('/admin/reject')
+def reject():
+    email = request.args.get("email")
+
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {
+            "status": "REJECTED",
+            "rejectedAt": datetime.now(timezone.utc)
+        }}
+    )
+
+    send_email(email, "Account Rejected", "Your signup request was rejected.")
+    return "❌ User rejected"
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json(force=True)
+    email, password = data.get("email"), data.get("password")
+
+    user = users_collection.find_one({"email": email})
+    if not user or user["password"] != password:
+        return jsonify({"message": "Invalid credentials"}), 401
+
+    if not user["verified"]:
+        return jsonify({"verified": False, "message": "Pending approval"}), 403
+
+    return jsonify({"verified": True, "token": "dummy-token"}), 200
+
+# ================= RUN =========================
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
-    print(f"🚀 Server running on port {port}")
+    print(f"🚀 Server running on {port}")
     serve(app, host="0.0.0.0", port=port)
