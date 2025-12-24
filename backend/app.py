@@ -67,21 +67,6 @@ def health():
 # ================= SENSOR APIs =================
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
-    data = request.get_json(force=True)
-    temperature = data.get("temperature")
-
-    if temperature is None:
-        return jsonify({"error": "Temperature missing"}), 400
-
-    temp_collection.insert_one({
-        "temperature": float(temperature),
-        "timestamp": datetime.now(timezone.utc)
-    })
-
-    return jsonify({"message": "Temperature saved"}), 200
-
-@app.route('/sensors/data', methods=['POST'])
-def save_temp():
     try:
         data = request.get_json(force=True)
         print("📥 Incoming JSON:", data)
