@@ -20,31 +20,41 @@
   </div>
 
   <script>
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+const API_BASE = "https://polyhouse-qqiy.onrender.com";
 
-    const res = await fetch('http://localhost:8080/login', {
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const msg = document.getElementById('message');
+
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
 
-    const msg = document.getElementById('message');
+    const data = await res.json();
 
     if (res.ok && data.verified) {
       localStorage.setItem('token', data.token);
       window.location.href = 'index.html';
-    } else if (res.ok && !data.verified) {
+    } else if (res.status === 403) {
       msg.textContent = "Your account is awaiting admin approval.";
       msg.style.color = "orange";
     } else {
       msg.textContent = data.message || "Invalid credentials!";
       msg.style.color = "red";
     }
-  });
-  </script>
+
+  } catch (err) {
+    msg.textContent = "Server not reachable.";
+    msg.style.color = "red";
+  }
+});
+</script>
+
 </body>
 </html>
