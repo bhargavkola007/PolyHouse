@@ -80,15 +80,27 @@ def save_temp():
 
     return jsonify({"message": "Temperature saved"}), 200
 
-@app.route('/sensors/data', methods=['GET'])
-def get_all_temp():
-    data = list(temp_collection.find().sort("timestamp", -1))
-    return jsonify([
-        {
-            "waterTemperature": d["temperature"],
-            "timestamp": d["timestamp"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
-        } for d in data
-    ])
+@app.route('/sensors/data', methods=['POST'])
+def save_temp():
+    try:
+        data = request.get_json(force=True)
+        print("📥 Incoming JSON:", data)
+
+        temperature = data.get("temperature")
+        if temperature is None:
+            return jsonify({"error": "Temperature missing"}), 400
+
+        temp_collection.insert_one({
+            "temperature": float(temperature),
+            "timestamp": datetime.now(timezone.utc)
+        })
+
+        return jsonify({"message": "Temperature saved"}), 200
+
+    except Exception as e:
+        print("❌ Error:", e)
+        return jsonify({"error": str(e)}), 400
+
 
 @app.route('/sensors/latest', methods=['GET'])
 def latest_temp():
@@ -220,9 +232,10 @@ def login():
     user = users_collection.find_one({"email": email})
     if not user or user["password"] != password:
         return jsonify({"message": "Invalid credentials"}), 401
-
-    if not user["verified"]:
+    
+    if user["status"] != "APPROVED":
         return jsonify({"verified": False, "message": "Pending approval"}), 403
+
 
     return jsonify({"verified": True, "token": "dummy-token"}), 200
 
