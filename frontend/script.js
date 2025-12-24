@@ -19,12 +19,19 @@ let size = parseInt(pageSizeSelect.value);
 async function loadData() {
   try {
     const res = await fetch(`${API_ROOT}/data`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
     allData = await res.json();
     renderTable();
   } catch (err) {
     console.error("Error fetching data:", err);
+    alert("Unable to load sensor data");
   }
 }
+
 function exportToCSV() {
   if (!allData.length) {
     alert("No data available to export!");

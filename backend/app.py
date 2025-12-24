@@ -139,6 +139,24 @@ def save_temp():
         print("❌ Error:", e)
         return jsonify({"error": str(e)}), 500
 
+# ================= SENSOR APIs =================
+@app.route('/sensors/data', methods=['GET'])
+def get_all_temp():
+    data = list(
+        temp_collection.find({}, {"_id": 0})
+        .sort("timestamp", -1)
+    )
+
+    result = []
+    for d in data:
+        result.append({
+            "waterTemperature": d.get("temperature"),
+            "timestamp": d["timestamp"]
+                .astimezone(IST)
+                .strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    return jsonify(result), 200
 
 @app.route('/sensors/latest', methods=['GET'])
 def latest_temp():
