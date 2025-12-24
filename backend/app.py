@@ -69,22 +69,75 @@ def health():
 def save_temp():
     try:
         data = request.get_json(force=True)
-        print("📥 Incoming JSON:", data)
-
         temperature = data.get("temperature")
+
         if temperature is None:
             return jsonify({"error": "Temperature missing"}), 400
 
+        temperature = float(temperature)
+        now = datetime.now(timezone.utc)
+
+        # Save temperature
         temp_collection.insert_one({
-            "temperature": float(temperature),
-            "timestamp": datetime.now(timezone.utc)
+            "temperature": temperature,
+            "timestamp": now
         })
 
-        return jsonify({"message": "Temperature saved"}), 200
+        # ================= AUTO / MANUAL LOGIC =================
+        relay2 = relay_collection.find_one({"device": "relay2"}) or {}
+        relay3 = relay_collection.find_one({"device": "relay3"}) or {}
+
+        relay2_mode = relay2.get("mode", "AUTO")
+        relay3_mode = relay3.get("mode", "AUTO")
+
+        exhaust_state = relay2.get("state", "OFF")
+        sprinkler_state = relay3.get("state", "OFF")
+
+        # AUTO control only if mode = AUTO
+        if relay2_mode == "AUTO" or relay3_mode == "AUTO":
+
+            if temperature > 28:
+                exhaust_state = "ON"
+                sprinkler_state = "ON"
+
+            elif temperature > 25:
+                exhaust_state = "ON"
+                sprinkler_state = "OFF"
+
+            else:
+                exhaust_state = "OFF"
+                sprinkler_state = "OFF"
+
+            if relay2_mode == "AUTO":
+                relay_collection.update_one(
+                    {"device": "relay2"},
+                    {"$set": {
+                        "state": exhaust_state,
+                        "timestamp": now
+                    }},
+                    upsert=True
+                )
+
+            if relay3_mode == "AUTO":
+                relay_collection.update_one(
+                    {"device": "relay3"},
+                    {"$set": {
+                        "state": sprinkler_state,
+                        "timestamp": now
+                    }},
+                    upsert=True
+                )
+
+        return jsonify({
+            "message": "Temperature processed",
+            "temperature": temperature,
+            "relay2": exhaust_state,
+            "relay3": sprinkler_state
+        }), 200
 
     except Exception as e:
         print("❌ Error:", e)
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/sensors/latest', methods=['GET'])
@@ -103,32 +156,47 @@ def latest_temp():
 def set_relay(device):
     data = request.get_json(force=True)
     state = data.get("state", "").upper()
+    mode = data.get("mode", "MANUAL").upper()
 
     if state not in ["ON", "OFF"]:
         return jsonify({"error": "Invalid state"}), 400
+
+    if mode not in ["AUTO", "MANUAL"]:
+        mode = "MANUAL"
 
     relay_collection.update_one(
         {"device": device},
         {"$set": {
             "state": state,
+            "mode": mode,
             "timestamp": datetime.now(timezone.utc)
         }},
         upsert=True
     )
 
-    return jsonify({"message": f"{device} turned {state}"}), 200
+    return jsonify({
+        "message": f"{device} set to {state}",
+        "mode": mode
+    }), 200
 
 @app.route('/sensors/control/<device>', methods=['GET'])
 def get_relay(device):
     r = relay_collection.find_one({"device": device})
+
     if not r:
-        return jsonify({"device": device, "state": "OFF"}), 200
+        return jsonify({
+            "device": device,
+            "state": "OFF",
+            "mode": "AUTO"
+        }), 200
 
     return jsonify({
         "device": device,
-        "state": r["state"],
+        "state": r.get("state", "OFF"),
+        "mode": r.get("mode", "AUTO"),
         "timestamp": r["timestamp"].astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
     })
+
 
 # ================= AUTH ========================
 @app.route('/signup', methods=['POST'])
