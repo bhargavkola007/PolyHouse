@@ -212,17 +212,27 @@ def reject():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json(force=True)
-    email, password = data.get("email"), data.get("password")
+    email = data.get("email")
+    password = data.get("password")
 
     user = users_collection.find_one({"email": email})
-    if not user or user["password"] != password:
+
+    if not user or user.get("password") != password:
         return jsonify({"message": "Invalid credentials"}), 401
-    
-    if user["status"] != "APPROVED":
-        return jsonify({"verified": False, "message": "Pending approval"}), 403
 
+    status = user.get("status", "PENDING")  # 🔥 SAFE ACCESS
 
-    return jsonify({"verified": True, "token": "dummy-token"}), 200
+    if status != "APPROVED":
+        return jsonify({
+            "verified": False,
+            "message": "Your account is awaiting admin approval."
+        }), 403
+
+    return jsonify({
+        "verified": True,
+        "token": "dummy-token"
+    }), 200
+
 
 # ================= RUN =========================
 if __name__ == "__main__":
