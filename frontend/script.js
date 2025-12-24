@@ -1,6 +1,6 @@
 const API_ROOT =
   window.location.hostname === "localhost"
-    ? "http://10.16.251.46:8080/sensors"
+    ? "http://10.117.239.84:8080/sensors"
     : "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");

@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 import os
 from waitress import serve
 
-BASE_URL = os.getenv("https://polyhouse-qqiy.onrender.com", "http://localhost:8080")
+BASE_URL = os.getenv("https://polyhouse-qqiy.onrender.com/sensors", "http://localhost:8080")
 
 
 # ================= FLASK SETUP =================
