@@ -201,33 +201,37 @@ def get_relay(device):
 # ================= AUTH ========================
 @app.route('/signup', methods=['POST'])
 def signup():
-    data = request.get_json(force=True)
-    name = data.get("name")
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.get_json(force=True)
+        name = data.get("name")
+        email = data.get("email")
+        password = data.get("password")
 
-    if not all([name, email, password]):
-        return jsonify({"message": "All fields required"}), 400
+        if not all([name, email, password]):
+            return jsonify({"message": "All fields required"}), 400
 
-    if users_collection.find_one({"email": email}):
-        return jsonify({"message": "Email already exists"}), 409
+        if users_collection.find_one({"email": email}):
+            return jsonify({"message": "Email already exists"}), 409
 
-    created_time = datetime.now(timezone.utc)
+        created_time = datetime.now(timezone.utc)
 
-    users_collection.insert_one({
-        "name": name,
-        "email": email,
-        "password": password,
-        "status": "PENDING",
-        "createdAt": created_time
-    })
-    
-    review_link = f"{BASE_URL}/admin/review?email={email}"
+        users_collection.insert_one({
+            "name": name,
+            "email": email,
+            "password": password,
+            "status": "PENDING",
+            "createdAt": created_time
+        })
 
-    send_email(
-        ADMIN_EMAIL,
-        "New User Approval Request",
-        f"""
+        review_link = f"{BASE_URL}/admin/review?email={email}"
+
+        # ✅ EMAIL SHOULD NEVER BREAK SIGNUP
+        try:
+            if SMTP_EMAIL and SMTP_PASSWORD:
+                send_email(
+                    ADMIN_EMAIL,
+                    "New User Approval Request",
+                    f"""
 New user signup request
 
 Name: {name}
@@ -237,9 +241,20 @@ Signup Time: {created_time.astimezone(IST).strftime('%Y-%m-%d %H:%M:%S')}
 Review user (Approve / Reject):
 {review_link}
 """
-    )
+                )
+            else:
+                print("⚠️ SMTP not configured, skipping email")
+        except Exception as mail_err:
+            print("⚠️ Email failed, but signup continues:", mail_err)
 
-    return jsonify({"message": "Signup successful. Await admin approval."}), 201
+        return jsonify({
+            "message": "Signup successful. Await admin approval."
+        }), 201
+
+    except Exception as e:
+        print("❌ Signup error:", e)
+        return jsonify({"message": "Internal server error"}), 500
+
 
 
 @app.route('/admin/review')
