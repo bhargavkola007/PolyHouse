@@ -64,21 +64,11 @@ def serve_file(path):
 def health():
     return jsonify({"status": "ok"}), 200
 
-# ================= SENSOR APIs =================
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
     try:
         data = request.get_json(force=True)
-        temperature = data.get("temperature")
-
-        if temperature is None:
-            return jsonify({"error": "Temperature missing"}), 400
-
-        # Make sure temperature is a float
-        try:
-            temperature = float(temperature)
-        except ValueError:
-            return jsonify({"error": "Invalid temperature format"}), 400
+        temperature = float(data.get("temperature"))
 
         now = datetime.now(timezone.utc)
 
@@ -88,97 +78,50 @@ def save_temp():
             "timestamp": now
         })
 
-        # Fetch relay configs
         relay2 = relay_collection.find_one({"device": "relay2"}) or {}
         relay3 = relay_collection.find_one({"device": "relay3"}) or {}
 
         relay2_mode = relay2.get("mode", "AUTO")
         relay3_mode = relay3.get("mode", "AUTO")
 
-        exhaust_state = relay2.get("state", "OFF")
-        sprinkler_state = relay3.get("state", "OFF")
+        # 🔥 PURE AUTO LOGIC (ALWAYS CALCULATED)
+        if temperature > 28:
+            exhaust_state = "ON"
+            sprinkler_state = "ON"
+        elif temperature > 25:
+            exhaust_state = "ON"
+            sprinkler_state = "OFF"
+        else:
+            exhaust_state = "OFF"
+            sprinkler_state = "OFF"
 
-        # 🔥 AUTO LOGIC
-        # EXHAUST FAN (relay2)
+        print(f"[AUTO] Temp={temperature} → Fan={exhaust_state}, Sprinkler={sprinkler_state}")
+
+        # Apply ONLY to AUTO relays
         if relay2_mode == "AUTO":
             relay_collection.update_one(
                 {"device": "relay2"},
-                {"$set": {
-                    "state": exhaust_state,
-                    "timestamp": now
-                }},
+                {"$set": {"state": exhaust_state, "timestamp": now}},
                 upsert=True
             )
 
-        # SPRINKLER (relay3)
         if relay3_mode == "AUTO":
             relay_collection.update_one(
                 {"device": "relay3"},
-                {"$set": {
-                    "state": sprinkler_state,
-                    "timestamp": now
-                }},
+                {"$set": {"state": sprinkler_state, "timestamp": now}},
                 upsert=True
             )
 
-            if temperature > 28:
-                exhaust_state = "ON"
-                sprinkler_state = "ON"
-
-            elif temperature > 25 and temperature <= 28:
-                exhaust_state = "ON"
-                sprinkler_state = "OFF"
-
-            else:  # temperature <= 25
-                exhaust_state = "OFF"
-                sprinkler_state = "OFF"
-
-            # Debug prints
-            print(f"[AUTO LOGIC] Temperature: {temperature}")
-            print(f"[AUTO LOGIC] Exhaust relay ({relay2_mode}): {exhaust_state}")
-            print(f"[AUTO LOGIC] Sprinkler relay ({relay3_mode}): {sprinkler_state}")
-
-            # Update relay2 if AUTO
-            if relay2_mode == "AUTO":
-                relay_collection.update_one(
-                    {"device": "relay2"},
-                    {"$set": {
-                        "state": exhaust_state,
-                        "timestamp": now
-                    }},
-                    upsert=True
-                )
-
-            # Update relay3 if AUTO
-            if relay3_mode == "AUTO":
-                relay_collection.update_one(
-                    {"device": "relay3"},
-                    {"$set": {
-                        "state": sprinkler_state,
-                        "timestamp": now
-                    }},
-                    upsert=True
-                )
-
-        # Return relay states so IoT device can act immediately
         return jsonify({
-            "message": "Temperature processed",
             "temperature": temperature,
-            "relay2": {
-                "state": exhaust_state,
-                "mode": relay2_mode
-            },
-            "relay3": {
-                "state": sprinkler_state,
-                "mode": relay3_mode
-            }
+            "relay2": {"state": exhaust_state, "mode": relay2_mode},
+            "relay3": {"state": sprinkler_state, "mode": relay3_mode}
         }), 200
 
     except Exception as e:
-        print("❌ Error in /sensors/data:", e)
+        print("❌ AUTO ERROR:", e)
         return jsonify({"error": "Internal server error"}), 500
-
-
+    
 # ================= SENSOR READ APIs =================
 @app.route('/sensors/data', methods=['GET'])
 def get_all_temp():
