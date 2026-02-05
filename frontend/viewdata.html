@@ -32,13 +32,23 @@
   <div class="sensor-grid">
 
     <!-- Temperature -->
-    <div class="sensor-card" data-sensor="relay1">
-      <h2>🔥 Temperature Sensor</h2>
-      <div class="temp-display">
-        <span id="waterTemp">--</span> °C
-      </div>
-      <p>🕒 <span id="ts">--</span></p>
-    </div>
+    <!-- RELAY 1 -->
+<div class="sensor-card" data-sensor="relay1">
+  <h2>🔥 Temperature Relay</h2>
+
+  <div class="temp-display">
+    <span id="waterTemp">--</span> °C
+  </div>
+
+  <p>Status: <span class="status">--</span></p>
+
+  <div class="btn-group">
+    <button class="on-btn">ON</button>
+    <button class="off-btn">OFF</button>
+  </div>
+
+  <p>🕒 <span id="ts">--</span></p>
+</div>
 
     <!-- Fan -->
     <div class="sensor-card" data-sensor="relay2">
@@ -178,7 +188,7 @@ document.querySelectorAll(".sensor-card").forEach(card => {
 /* ===================== INIT ===================== */
 syncMode();
 loadLatest();
-["relay2","relay3"].forEach(loadRelay);
+["relay1","relay2","relay3"].forEach(loadRelay);
 
 setInterval(loadLatest, 5000);
 setInterval(() => ["relay2","relay3"].forEach(loadRelay), 7000);
