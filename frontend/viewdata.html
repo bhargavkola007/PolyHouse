@@ -31,39 +31,40 @@
 <main class="container">
   <div class="sensor-grid">
 
-    <!-- Temperature -->
-    <!-- RELAY 1 -->
-<div class="sensor-card" data-sensor="relay1">
-  <h2>🔥 Temperature Relay</h2>
+    <!-- RELAY 1 : MANUAL ONLY -->
+    <div class="sensor-card" data-sensor="relay1">
+      <h2>🔥 Temperature Relay (Manual)</h2>
 
-  <div class="temp-display">
-    <span id="waterTemp">--</span> °C
-  </div>
+      <div class="temp-display">
+        <span id="waterTemp">--</span> °C
+      </div>
 
-  <p>Status: <span class="status">--</span></p>
+      <p>Status: <span class="status">--</span></p>
 
-  <div class="btn-group">
-    <button class="on-btn">ON</button>
-    <button class="off-btn">OFF</button>
-  </div>
+      <div class="btn-group">
+        <button class="on-btn">ON</button>
+        <button class="off-btn">OFF</button>
+      </div>
 
-  <p>🕒 <span id="ts">--</span></p>
-</div>
+      <p>🕒 <span id="ts">--</span></p>
+    </div>
 
-    <!-- Fan -->
+    <!-- RELAY 2 -->
     <div class="sensor-card" data-sensor="relay2">
       <h2>🌀 Cooling Fan</h2>
       <p>Status: <span class="status">--</span></p>
+
       <div class="btn-group">
         <button class="on-btn">ON</button>
         <button class="off-btn">OFF</button>
       </div>
     </div>
 
-    <!-- Sprinkler -->
+    <!-- RELAY 3 -->
     <div class="sensor-card" data-sensor="relay3">
       <h2>💦 Sprinkler</h2>
       <p>Status: <span class="status">--</span></p>
+
       <div class="btn-group">
         <button class="on-btn">ON</button>
         <button class="off-btn">OFF</button>
@@ -84,23 +85,23 @@ const API_ROOT =
     ? "http://localhost:8080/sensors"
     : "https://polyhouse-qqiy.onrender.com/sensors";
 
+let systemMode = "AUTO"; // derived from relay2
+
 /* ===================== MODE ===================== */
 async function syncMode() {
   const res = await fetch(`${API_ROOT}/control/relay2`);
   const d = await res.json();
-  updateModeButton(d.mode || "AUTO");
+  systemMode = d.mode || "AUTO";
+  updateModeButton(systemMode);
 }
 
 async function toggleAutoManual() {
-  const res = await fetch(`${API_ROOT}/control/relay2`);
-  const d = await res.json();
-
-  const newMode = d.mode === "AUTO" ? "MANUAL" : "AUTO";
+  const newMode = systemMode === "AUTO" ? "MANUAL" : "AUTO";
 
   for (const relay of ["relay2", "relay3"]) {
     const payload =
       newMode === "MANUAL"
-        ? { mode: "MANUAL", state: "OFF" }   // ✅ REQUIRED
+        ? { mode: "MANUAL", state: "OFF" }
         : { mode: "AUTO" };
 
     await fetch(`${API_ROOT}/control/${relay}`, {
@@ -110,7 +111,8 @@ async function toggleAutoManual() {
     });
   }
 
-  updateModeButton(newMode);
+  systemMode = newMode;
+  updateModeButton(systemMode);
 }
 
 function updateModeButton(mode) {
@@ -134,10 +136,10 @@ async function loadRelay(sensor) {
   const res = await fetch(`${API_ROOT}/control/${sensor}`);
   if (!res.ok) return;
   const d = await res.json();
-  updateRelayUI(sensor, d.state, d.mode);
+  updateRelayUI(sensor, d.state);
 }
 
-function updateRelayUI(sensor, state, mode) {
+function updateRelayUI(sensor, state) {
   const card = document.querySelector(`.sensor-card[data-sensor="${sensor}"]`);
   if (!card) return;
 
@@ -148,7 +150,15 @@ function updateRelayUI(sensor, state, mode) {
   status.textContent = state;
   status.style.color = state === "ON" ? "#00c853" : "#d32f2f";
 
-  if (mode === "AUTO") {
+  // relay1 = always manual
+  if (sensor === "relay1") {
+    onBtn.disabled = false;
+    offBtn.disabled = false;
+    return;
+  }
+
+  // relay2 & relay3
+  if (systemMode === "AUTO") {
     onBtn.disabled = true;
     offBtn.disabled = true;
   } else {
@@ -159,9 +169,7 @@ function updateRelayUI(sensor, state, mode) {
 
 /* ===================== MANUAL CONTROL ===================== */
 async function controlRelay(sensor, state) {
-  const res = await fetch(`${API_ROOT}/control/${sensor}`);
-  const d = await res.json();
-  if (d.mode === "AUTO") {
+  if (sensor !== "relay1" && systemMode === "AUTO") {
     alert("Switch to MANUAL mode first!");
     return;
   }
@@ -181,8 +189,8 @@ document.getElementById("modeToggleBtn")
 
 document.querySelectorAll(".sensor-card").forEach(card => {
   const sensor = card.dataset.sensor;
-  card.querySelector(".on-btn")?.addEventListener("click", () => controlRelay(sensor, "ON"));
-  card.querySelector(".off-btn")?.addEventListener("click", () => controlRelay(sensor, "OFF"));
+  card.querySelector(".on-btn").addEventListener("click", () => controlRelay(sensor, "ON"));
+  card.querySelector(".off-btn").addEventListener("click", () => controlRelay(sensor, "OFF"));
 });
 
 /* ===================== INIT ===================== */
@@ -191,7 +199,7 @@ loadLatest();
 ["relay1","relay2","relay3"].forEach(loadRelay);
 
 setInterval(loadLatest, 5000);
-setInterval(() => ["relay2","relay3"].forEach(loadRelay), 7000);
+setInterval(() => ["relay1","relay2","relay3"].forEach(loadRelay), 7000);
 </script>
 
 </body>
