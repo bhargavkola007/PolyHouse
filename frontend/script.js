@@ -2,7 +2,7 @@
 //   window.location.hostname === "localhost"
 //     ? "http://10.117.239.84:8080/sensors"
 //     : "https://polyhouse-060s.onrender.com/sensors";
-const token = localStorage.getItem("token");
+const token = window.token; // from auth.js
 const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");

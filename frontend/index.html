@@ -21,7 +21,7 @@
 
 <script>
   const isBot = /Googlebot|bingbot|Slurp/i.test(navigator.userAgent);
-  const token = localStorage.getItem('token');
+const token = window.token; // from auth.js
 
   if (!token && !isBot) {
     window.location.href = 'login.html';
