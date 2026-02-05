@@ -1,7 +1,3 @@
-// const API_ROOT =
-//   window.location.hostname === "localhost"
-//     ? "http://10.117.239.84:8080/sensors"
-//     : "https://polyhouse-060s.onrender.com/sensors";
 const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");
@@ -21,10 +17,22 @@ async function loadData() {
     const res = await fetch(`${API_ROOT}/data`);
 
     if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+      throw new Error(`HTTP error ${res.status}`);
     }
 
-    allData = await res.json();
+    const text = await res.text();
+
+    // 🔒 SAFE JSON PARSE (HTML error avoid)
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      console.error("Non JSON response:", text);
+      alert("Server returned invalid data");
+      return;
+    }
+
+    allData = json;
     renderTable();
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -38,7 +46,6 @@ function exportToCSV() {
     return;
   }
 
-  // Create CSV header
   const headers = ["S.No", "Temperature (°C)", "Timestamp"];
   const rows = allData.map((d, i) => [
     i + 1,
@@ -46,52 +53,16 @@ function exportToCSV() {
     d.timestamp ?? "-"
   ]);
 
-  // Combine headers and rows
-  const csvContent = [headers, ...rows]
-    .map(e => e.join(","))
-    .join("\n");
+  const csvContent = [headers, ...rows].map(r => r.join(",")).join("\n");
 
-  // Create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `polyhouse_data_${new Date().toISOString().slice(0,10)}.csv`);
+  link.href = url;
+  link.download = `polyhouse_data_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
-// ===== PROFILE MENU & LOGOUT =====
-
-// Remove profile icon if not logged in
-const profileMenu = document.querySelector(".profile-menu");
-if (!token && profileMenu) {
-  profileMenu.remove();
-}
-
-const profileIcon = document.getElementById("profileIcon");
-const dropdown = document.getElementById("profileDropdown");
-const logoutBtn = document.getElementById("logoutBtn");
-
-if (profileIcon && dropdown && logoutBtn) {
-  // Toggle dropdown
-  profileIcon.addEventListener("click", (e) => {
-    e.stopPropagation();
-    dropdown.classList.toggle("active");
-  });
-
-  // Logout
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".profile-menu")) {
-      dropdown.classList.remove("active");
-    }
-  });
 }
 
 function renderTable() {
@@ -100,7 +71,7 @@ function renderTable() {
 
   let filtered = allData.filter(
     d =>
-      d.waterTemperature?.toString().toLowerCase().includes(search) ||
+      d.waterTemperature?.toString().includes(search) ||
       d.timestamp?.toLowerCase().includes(search)
   );
 
@@ -110,46 +81,27 @@ function renderTable() {
   const start = (page - 1) * size;
   const pageData = filtered.slice(start, start + size);
 
-  tbody.innerHTML = pageData
-    .map(
-      (d, i) => `
+  tbody.innerHTML = pageData.map(
+    (d, i) => `
       <tr>
         <td>${start + i + 1}</td>
-        <td>${d.waterTemperature ?? '-'}</td>
-        <td>${d.timestamp ?? '-'}</td>
+        <td>${d.waterTemperature ?? "-"}</td>
+        <td>${d.timestamp ?? "-"}</td>
       </tr>
     `
-    )
-    .join('');
+  ).join("");
 
-  pageInfo.textContent = `Page ${page} of ${totalPages || 1} (${filtered.length} records)`;
+  pageInfo.textContent = `Page ${page} of ${totalPages || 1}`;
   prevBtn.disabled = page <= 1;
   nextBtn.disabled = page >= totalPages;
 }
 
-pageSizeSelect.addEventListener("change", () => {
-  page = 1;
-  renderTable();
-});
+pageSizeSelect.onchange = () => { page = 1; renderTable(); };
+searchBox.oninput = () => { page = 1; renderTable(); };
+prevBtn.onclick = () => { if (page > 1) { page--; renderTable(); } };
+nextBtn.onclick = () => { page++; renderTable(); };
 
-searchBox.addEventListener("input", () => {
-  page = 1;
-  renderTable();
-});
-
-prevBtn.addEventListener("click", () => {
-  if (page > 1) {
-    page--;
-    renderTable();
-  }
-});
-
-nextBtn.addEventListener("click", () => {
-  page++;
-  renderTable();
-});
-
-viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
-document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+viewDataBtn.onclick = () => window.location.href = "viewdata.html";
+document.getElementById("exportBtn")?.addEventListener("click", exportToCSV);
 
 loadData();
