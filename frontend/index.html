@@ -18,16 +18,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-
+<script src="auth.js"></script>
 <script>
   const isBot = /Googlebot|bingbot|Slurp/i.test(navigator.userAgent);
-  const token = localStorage.getItem('token');
 
-  if (!token && !isBot) {
+  if (!window.token && !isBot) {
     window.location.href = 'login.html';
   }
 </script>
-
 
 <body>
   <header>
