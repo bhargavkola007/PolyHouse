@@ -84,13 +84,19 @@ async function syncMode() {
 async function toggleAutoManual() {
   const res = await fetch(`${API_ROOT}/control/relay2`);
   const d = await res.json();
+
   const newMode = d.mode === "AUTO" ? "MANUAL" : "AUTO";
 
   for (const relay of ["relay2", "relay3"]) {
+    const payload =
+      newMode === "MANUAL"
+        ? { mode: "MANUAL", state: "OFF" }   // ✅ REQUIRED
+        : { mode: "AUTO" };
+
     await fetch(`${API_ROOT}/control/${relay}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: newMode })
+      body: JSON.stringify(payload)
     });
   }
 
