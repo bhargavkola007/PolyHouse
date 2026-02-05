@@ -2,20 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Polyhouse Temperature Monitoring - CUTM</title>
+
+  <title>CUTM Polyhouse Monitoring | Smart Polyhouse Automation</title>
+
+  <meta name="description" content="CUTM Polyhouse Monitoring System is an IoT-based smart polyhouse automation project by Centurion University of Technology and Management for temperature, humidity and irrigation monitoring.">
+
+  <meta name="keywords" content="CUTM Polyhouse, Centurion University Polyhouse, Polyhouse Monitoring CUTM, Smart Polyhouse, IoT Polyhouse">
+
+  <meta name="robots" content="index, follow">
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="canonical" href="https://polyhouse-qqiy.onrender.com/">
+
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <script>
+  const isBot = /Googlebot|bingbot|Slurp/i.test(navigator.userAgent);
   const token = localStorage.getItem('token');
-  if (!token) {
+
+  if (!token && !isBot) {
     window.location.href = 'login.html';
   }
 </script>
 
+
 <body>
   <header>
+    <section class="seo-content">
+  <h1>CUTM Polyhouse Monitoring System</h1>
+  <p>
+    This is an IoT-based smart polyhouse monitoring and automation system developed at
+    <strong>Centurion University of Technology and Management (CUTM)</strong>.
+    The system monitors temperature, humidity and irrigation in real time.
+  </p>
+</section>
+
     <img src="cutm logo.png" class="logo" alt="CUTM">
     <div class="titles">
       <h1>Centurion University Of Technology and Management</h1>
