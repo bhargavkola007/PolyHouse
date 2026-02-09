@@ -24,15 +24,20 @@
 }
 
 /* =========================
-   BODY
+   BASE
 ========================= */
+html {
+  font-size: clamp(14px, 1.2vw, 16px);
+}
+
 body {
-  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  font-family: "Poppins", "Segoe UI", sans-serif;
   background: linear-gradient(135deg, var(--bg-light), #ffffff);
   color: var(--text-dark);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  line-height: 1.5;
 }
 
 /* =========================
@@ -41,7 +46,7 @@ body {
 header {
   background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
   color: white;
-  padding: 1.5rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
   text-align: center;
   box-shadow: var(--shadow-lg);
   position: sticky;
@@ -50,7 +55,7 @@ header {
 }
 
 header h2 {
-  font-size: 1.8rem;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
   font-weight: 600;
 }
 
@@ -58,12 +63,12 @@ header h2 {
    MAIN CONTAINER
 ========================= */
 .container {
-  max-width: 1300px;
+  max-width: 1400px;
   margin: auto;
-  padding: 2rem 1.5rem;
+  padding: clamp(1rem, 4vw, 2rem);
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: clamp(1.2rem, 3vw, 2rem);
 }
 
 /* =========================
@@ -71,38 +76,37 @@ header h2 {
 ========================= */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: clamp(0.8rem, 2.5vw, 1.4rem);
 }
 
 .stat-card {
   background: var(--card-bg);
-  padding: 1rem;
+  padding: clamp(0.9rem, 3vw, 1.2rem);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   text-align: center;
 }
 
 .stat-card h4 {
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2.5vw, 0.95rem);
   color: var(--text-light);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
 }
 
 .stat-card p {
-  font-size: 1.6rem;
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
   font-weight: 700;
   color: var(--primary-green);
 }
 
 /* =========================
-   CHART GRID (SMALLER)
+   CHART GRID
 ========================= */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2 charts per row */
-  gap: 1.5rem;
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: clamp(1rem, 3vw, 1.6rem);
 }
 
 /* =========================
@@ -110,7 +114,7 @@ header h2 {
 ========================= */
 .chart-container {
   background: var(--card-bg);
-  padding: 1.2rem;
+  padding: clamp(1rem, 3vw, 1.4rem);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   border-left: 4px solid var(--accent-orange);
@@ -118,18 +122,18 @@ header h2 {
 }
 
 .chart-container h3 {
-  font-size: 1.05rem;
+  font-size: clamp(0.95rem, 3vw, 1.15rem);
   font-weight: 600;
   color: var(--accent-orange);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.7rem;
 }
 
 /* =========================
-   CANVAS (SMALL SIZE)
+   CANVAS (RESPONSIVE HEIGHT)
 ========================= */
 .chart-container canvas {
-  height: 220px !important;
   width: 100% !important;
+  height: clamp(180px, 35vw, 260px) !important;
 }
 
 /* =========================
@@ -138,19 +142,21 @@ header h2 {
 .back-btn {
   display: flex;
   justify-content: center;
+  margin-top: 1rem;
 }
 
 .back-btn button {
   background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
   color: white;
   border: none;
-  padding: 0.8rem 1.8rem;
+  padding: clamp(0.7rem, 2.5vw, 0.9rem)
+           clamp(1.4rem, 4vw, 2rem);
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 3vw, 1rem);
   cursor: pointer;
   font-weight: 600;
   box-shadow: var(--shadow-md);
-  transition: 0.3s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .back-btn button:hover {
@@ -165,8 +171,8 @@ footer {
   background: var(--dark-green);
   color: white;
   text-align: center;
-  padding: 1rem;
-  font-size: 0.9rem;
+  padding: clamp(0.8rem, 2.5vw, 1rem);
+  font-size: clamp(0.8rem, 2.5vw, 0.9rem);
   margin-top: auto;
 }
 
@@ -185,21 +191,24 @@ footer {
 }
 
 /* =========================
-   RESPONSIVE
+   EXTRA SMALL DEVICES
 ========================= */
-@media (max-width: 768px) {
-  .chart-container canvas {
-    height: 200px !important;
+@media (max-width: 360px) {
+  header h2 {
+    font-size: 1.2rem;
   }
 }
 
-@media (max-width: 480px) {
-  header h2 {
-    font-size: 1.4rem;
+/* =========================
+   LARGE SCREENS
+========================= */
+@media (min-width: 1600px) {
+  body {
+    font-size: 17px;
   }
 
-  .chart-container canvas {
-    height: 180px !important;
+  .container {
+    max-width: 1500px;
   }
 }
 
@@ -219,7 +228,13 @@ footer {
    PRINT
 ========================= */
 @media print {
-  header, footer, .back-btn {
+  header,
+  footer,
+  .back-btn {
     display: none;
+  }
+
+  body {
+    background: white;
   }
 }

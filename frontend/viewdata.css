@@ -1,10 +1,11 @@
-/* ================= GLOBAL ================= */
+/* ================= GLOBAL RESET ================= */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* ================= ROOT VARIABLES ================= */
 :root {
   --green: #059669;
   --red: #ef4444;
@@ -17,33 +18,44 @@
   --shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
 
+/* ================= BASE ================= */
+html {
+  font-size: clamp(14px, 1.2vw, 16px);
+}
+
 body {
   font-family: "Poppins", sans-serif;
   background: var(--bg);
   color: var(--dark);
+  line-height: 1.5;
 }
 
 /* ================= HEADER ================= */
 header {
   background: linear-gradient(135deg, #16a34a, #059669);
   color: white;
-  padding: 1.2rem 2rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
 
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  gap: 12px;
 }
 
 header h1 {
-  font-size: 1.6rem;
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
   font-weight: 700;
+  text-align: center;
+  flex: 1 1 100%;
 }
 
 .header-buttons {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
 }
 
 /* Header Buttons */
@@ -53,26 +65,24 @@ header button {
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.3s;
+  transition: transform 0.25s, opacity 0.25s;
 }
 
 header button:hover {
   transform: scale(1.05);
 }
 
-/* Back Button */
+/* Button Variants */
 .back-btn {
   background: white;
   color: var(--dark);
 }
 
-/* Chart Button */
 .chart-btn {
   background: white;
   color: var(--green);
 }
 
-/* Mode Button */
 .mode-btn {
   color: white;
 }
@@ -87,9 +97,9 @@ header button:hover {
 
 /* ================= MAIN ================= */
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: auto;
-  padding: 2rem;
+  padding: clamp(1rem, 4vw, 2rem);
 }
 
 /* ================= TEMPERATURE CARD ================= */
@@ -100,22 +110,23 @@ header button:hover {
 }
 
 .temp-card {
+  width: 100%;
+  max-width: 420px;
   background: linear-gradient(135deg, #22c55e, #16a34a);
   color: white;
-  padding: 2rem 3rem;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
   border-radius: 18px;
   text-align: center;
-  box-shadow: 0 12px 25px rgba(0,0,0,0.12);
-  min-width: 340px;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
 }
 
 .temp-card h2 {
-  font-size: 1.3rem;
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
   opacity: 0.9;
 }
 
 .temp-value {
-  font-size: 3.8rem;
+  font-size: clamp(2.5rem, 8vw, 4rem);
   font-weight: 800;
   margin: 1rem 0;
 }
@@ -125,16 +136,16 @@ header button:hover {
   opacity: 0.85;
 }
 
-/* ================= RELAYS ================= */
+/* ================= RELAY SECTION ================= */
 .section-title {
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 3.5vw, 1.6rem);
   margin-bottom: 1.5rem;
 }
 
 .sensor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: clamp(1rem, 3vw, 2rem);
 }
 
 /* Relay Card */
@@ -143,16 +154,16 @@ header button:hover {
   padding: 1.6rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  transition: 0.25s;
+  transition: transform 0.25s, box-shadow 0.25s;
 }
 
 .sensor-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
 }
 
 .sensor-card h3 {
-  font-size: 1.25rem;
+  font-size: clamp(1.1rem, 3vw, 1.3rem);
   margin-bottom: 0.8rem;
 }
 
@@ -182,13 +193,14 @@ header button:hover {
 
 .btn-group button {
   flex: 1;
-  padding: 0.75rem;
+  padding: clamp(0.65rem, 2vw, 0.85rem);
   border: none;
   border-radius: 10px;
   font-weight: 700;
+  font-size: clamp(0.85rem, 2.5vw, 1rem);
   cursor: pointer;
   color: white;
-  transition: 0.3s;
+  transition: opacity 0.3s, transform 0.2s;
 }
 
 .on-btn {
@@ -201,11 +213,13 @@ header button:hover {
 
 .btn-group button:hover {
   opacity: 0.9;
+  transform: translateY(-2px);
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* ================= FOOTER ================= */
@@ -215,22 +229,38 @@ footer {
   color: white;
   text-align: center;
   padding: 1rem;
+  font-size: 0.9rem;
 }
 
-/* ================= MOBILE ================= */
-@media (max-width: 600px) {
-  header {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
+/* ================= EXTRA SMALL DEVICES ================= */
+@media (max-width: 360px) {
+  header h1 {
+    font-size: 1.1rem;
   }
 
+  .section-title {
+    font-size: 1.2rem;
+  }
+
+  .sensor-card h3 {
+    font-size: 1.05rem;
+  }
+}
+
+/* ================= TABLETS ================= */
+@media (min-width: 600px) and (max-width: 900px) {
   .temp-card {
-    min-width: 100%;
-    padding: 1.5rem;
+    max-width: 500px;
+  }
+}
+
+/* ================= LARGE SCREENS ================= */
+@media (min-width: 1600px) {
+  body {
+    font-size: 17px;
   }
 
-  .temp-value {
-    font-size: 3rem;
+  .container {
+    max-width: 1500px;
   }
 }
