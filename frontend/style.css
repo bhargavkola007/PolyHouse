@@ -288,8 +288,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: var(--hover-bg);
-  transform: scale(1.01);
+  background: #f8fafc;
 }
 
 tbody tr:last-child {

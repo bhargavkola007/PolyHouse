@@ -135,7 +135,11 @@ footer {
   color: white;
   text-align: center;
   padding: 1rem;
-  margin-top: 2rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 /* Mobile */
@@ -148,4 +152,77 @@ footer {
   .temp-display {
     font-size: 2rem;
   }
+}
+/* ===== Temperature Section ===== */
+.temperature-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.temp-card {
+  background: linear-gradient(135deg, #16a34a, #059669);
+  color: white;
+  padding: 2rem 3rem;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+  min-width: 320px;
+}
+
+.temp-card h2 {
+  font-size: 1.3rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.temp-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin: 1rem 0;
+}
+
+.timestamp {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+/* ===== Relay Section ===== */
+.relay-section {
+  margin-top: 1rem;
+}
+
+.section-title {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  color: var(--dark);
+}
+
+/* Relay Cards */
+.sensor-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sensor-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+}
+
+.sensor-card h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Status text */
+.status {
+  font-weight: 600;
+}
+
+/* Buttons refinement */
+.on-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.off-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
 }
