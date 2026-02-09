@@ -1,3 +1,4 @@
+/* ================= GLOBAL ================= */
 * {
   margin: 0;
   padding: 0;
@@ -8,177 +9,114 @@
   --green: #059669;
   --red: #ef4444;
   --blue: #3b82f6;
-  --yellow: #f59e0b;
   --dark: #1f2937;
   --light: #6b7280;
   --bg: #f0fdf4;
   --card: #ffffff;
-  --radius: 12px;
-  --shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  --radius: 14px;
+  --shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
 
 body {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   background: var(--bg);
   color: var(--dark);
-  min-height: 100vh;
 }
 
-/* Header */
+/* ================= HEADER ================= */
 header {
-  background: var(--green);
+  background: linear-gradient(135deg, #16a34a, #059669);
   color: white;
-  padding: 1rem 1.5rem;
+  padding: 1.2rem 2rem;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 header h1 {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Header Buttons */
 header button {
-  background: white;
-  color: var(--green);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  transition: 0.3s;
 }
 
-/* Container */
+header button:hover {
+  transform: scale(1.05);
+}
+
+/* Back Button */
+.back-btn {
+  background: white;
+  color: var(--dark);
+}
+
+/* Chart Button */
+.chart-btn {
+  background: white;
+  color: var(--green);
+}
+
+/* Mode Button */
+.mode-btn {
+  color: white;
+}
+
+.auto-mode {
+  background: #22c55e;
+}
+
+.manual-mode {
+  background: #dc2626;
+}
+
+/* ================= MAIN ================= */
 .container {
   max-width: 1200px;
   margin: auto;
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
-/* Grid */
-.sensor-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-/* Cards */
-.sensor-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow);
-  border-left: 4px solid var(--green);
-}
-
-.sensor-card h2 {
-  font-size: 1.3rem;
-  margin-bottom: 1rem;
-}
-
-/* Temperature */
-.temp-display {
-  font-size: 2.5rem;
-  text-align: center;
-  margin: 1rem 0;
-  color: var(--green);
-}
-
-/* Text */
-.sensor-card p {
-  color: var(--light);
-  margin-bottom: 0.5rem;
-}
-
-/* Buttons */
-.btn-group {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.btn-group button {
-  flex: 1;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  color: white;
-}
-
-.on-btn {
-  background: var(--green);
-}
-
-.off-btn {
-  background: var(--red);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ON / OFF State */
-.sensor-card.on {
-  border-left-color: var(--green);
-}
-
-.sensor-card.off {
-  border-left-color: var(--red);
-}
-
-/* Footer */
-footer {
-  background: var(--green);
-  color: white;
-  text-align: center;
-  padding: 1rem;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000;
-}
-
-/* Mobile */
-@media (max-width: 600px) {
-  header {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .temp-display {
-    font-size: 2rem;
-  }
-}
-/* ===== Temperature Section ===== */
+/* ================= TEMPERATURE CARD ================= */
 .temperature-section {
   display: flex;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .temp-card {
-  background: linear-gradient(135deg, #16a34a, #059669);
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   color: white;
   padding: 2rem 3rem;
-  border-radius: 16px;
+  border-radius: 18px;
   text-align: center;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-  min-width: 320px;
+  box-shadow: 0 12px 25px rgba(0,0,0,0.12);
+  min-width: 340px;
 }
 
 .temp-card h2 {
   font-size: 1.3rem;
-  font-weight: 500;
   opacity: 0.9;
 }
 
 .temp-value {
-  font-size: 3.5rem;
-  font-weight: 700;
+  font-size: 3.8rem;
+  font-weight: 800;
   margin: 1rem 0;
 }
 
@@ -187,42 +125,112 @@ footer {
   opacity: 0.85;
 }
 
-/* ===== Relay Section ===== */
-.relay-section {
-  margin-top: 1rem;
-}
-
+/* ================= RELAYS ================= */
 .section-title {
-  font-size: 1.4rem;
-  margin-bottom: 1rem;
-  color: var(--dark);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-/* Relay Cards */
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.8rem;
+}
+
+/* Relay Card */
 .sensor-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--card);
+  padding: 1.6rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: 0.25s;
 }
 
 .sensor-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+  transform: translateY(-6px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.12);
 }
 
 .sensor-card h3 {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   margin-bottom: 0.8rem;
 }
 
-/* Status text */
-.status {
-  font-weight: 600;
+.sensor-card p {
+  color: var(--light);
 }
 
-/* Buttons refinement */
+/* Status Colors */
+.sensor-card.on {
+  border-left: 6px solid var(--green);
+}
+
+.sensor-card.off {
+  border-left: 6px solid var(--red);
+}
+
+.status {
+  font-weight: 700;
+}
+
+/* Buttons */
+.btn-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.3rem;
+}
+
+.btn-group button {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  color: white;
+  transition: 0.3s;
+}
+
 .on-btn {
   background: linear-gradient(135deg, #22c55e, #16a34a);
 }
 
 .off-btn {
   background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-group button:hover {
+  opacity: 0.9;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ================= FOOTER ================= */
+footer {
+  margin-top: 3rem;
+  background: var(--green);
+  color: white;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 600px) {
+  header {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .temp-card {
+    min-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .temp-value {
+    font-size: 3rem;
+  }
 }

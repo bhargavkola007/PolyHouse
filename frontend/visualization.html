@@ -13,10 +13,38 @@
   </header>
 
   <main class="container">
-    <div class="chart-container">
-      <h3>🌡️ Temperature (°C) Over Time</h3>
-      <canvas id="tempChart"></canvas>
-    </div>
+    <div class="stats-grid">
+  <div class="stat-card">
+    <h4>🌡️ Min Temp</h4>
+    <p id="minTemp">-- °C</p>
+  </div>
+  <div class="stat-card">
+    <h4>🔥 Max Temp</h4>
+    <p id="maxTemp">-- °C</p>
+  </div>
+  <div class="stat-card">
+    <h4>📊 Avg Temp</h4>
+    <p id="avgTemp">-- °C</p>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-container">
+    <h3>🌡 Temperature Over Time</h3>
+    <canvas id="tempChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h3>📊 Average Temperature</h3>
+    <canvas id="avgChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h3>🥧 Temperature Distribution</h3>
+    <canvas id="pieChart"></canvas>
+  </div>
+</div>
+
 
     <div class="back-btn">
       <button onclick="window.location.href='viewdata.html'">⬅️ Back to Live Data</button>
@@ -33,56 +61,86 @@ const API_ROOT =
     ? "http://localhost:8080/sensors"
     : "https://polyhouse-qqiy.onrender.com/sensors";
 
+async function loadData() {
+  try {
+    const res = await fetch(`${API_ROOT}/data`);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
 
-    async function loadData() {
-      try {
-        const res = await fetch(`${API_ROOT}/data`);
-        if (!res.ok) throw new Error("Failed to load data");
-        return await res.json();
-      } catch (err) {
-        console.error(err);
-        return [];
-      }
+function calculateStats(temps) {
+  const min = Math.min(...temps);
+  const max = Math.max(...temps);
+  const avg = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(2);
+
+  document.getElementById("minTemp").innerText = `${min} °C`;
+  document.getElementById("maxTemp").innerText = `${max} °C`;
+  document.getElementById("avgTemp").innerText = `${avg} °C`;
+}
+
+function drawLineChart(labels, temps) {
+  new Chart(tempChart, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Water Temperature (°C)',
+        data: temps,
+        borderColor: '#f57c00',
+        backgroundColor: 'rgba(245,124,0,0.2)',
+        fill: true,
+        tension: 0.4
+      }]
     }
+  });
+}
 
-    function drawTemperatureChart(data) {
-      const labels = data.map(d => d.timestamp);
-      const temps = data.map(d => d.waterTemperature);
-
-      new Chart(document.getElementById("tempChart"), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Water Temperature (°C)',
-            data: temps,
-            borderColor: '#f57c00',
-            backgroundColor: 'rgba(245,124,0,0.2)',
-            fill: true,
-            tension: 0.3,
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true },
-            tooltip: { enabled: true }
-          },
-          scales: {
-            x: { title: { display: true, text: 'Time' } },
-            y: { title: { display: true, text: 'Temperature (°C)' } }
-          }
-        }
-      });
+function drawBarChart(labels, temps) {
+  new Chart(avgChart, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Temperature',
+        data: temps,
+        backgroundColor: '#059669'
+      }]
     }
+  });
+}
 
-    (async () => {
-      const data = await loadData();
-      drawTemperatureChart(data);
-    })();
-  </script>
+function drawPieChart(temps) {
+  const ranges = {
+    Cold: temps.filter(t => t < 20).length,
+    Normal: temps.filter(t => t >= 20 && t <= 30).length,
+    Hot: temps.filter(t => t > 30).length
+  };
+
+  new Chart(pieChart, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(ranges),
+      datasets: [{
+        data: Object.values(ranges),
+        backgroundColor: ['#3b82f6', '#22c55e', '#ef4444']
+      }]
+    }
+  });
+}
+
+(async () => {
+  const data = await loadData();
+  const labels = data.map(d => d.timestamp);
+  const temps = data.map(d => d.waterTemperature);
+
+  calculateStats(temps);
+  drawLineChart(labels, temps);
+  drawBarChart(labels, temps);
+  drawPieChart(temps);
+})();
+</script>
+
 </body>
 </html>
