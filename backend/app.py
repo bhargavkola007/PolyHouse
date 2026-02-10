@@ -212,32 +212,43 @@ def get_relay(device):
 # ================= AUTH ========================
 @app.route('/signup', methods=['POST'])
 def signup():
+    print("👉 Signup API hit")
+
     try:
-        data = request.get_json(force=True)
-        name = data.get("name")
-        email = data.get("email")
-        password = data.get("password")
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"message": "Invalid JSON body"}), 400
 
-        if not all([name, email, password]):
-            return jsonify({"message": "All fields required"}), 400
+        name = data.get("name", "").strip()
+        email = data.get("email", "").strip().lower()
+        password = data.get("password", "").strip()
 
+        # ---- Basic validation ----
+        if not name or not email or not password:
+            return jsonify({"message": "All fields are required"}), 400
+
+        # ---- Check existing user ----
         if users_collection.find_one({"email": email}):
             return jsonify({"message": "Email already exists"}), 409
 
         created_time = datetime.now(timezone.utc)
 
+        # ---- Save user ----
         users_collection.insert_one({
             "name": name,
             "email": email,
-            "password": password,
+            "password": password,  # ⚠️ Later: hash this
             "status": "PENDING",
             "createdAt": created_time
         })
 
+        print(f"✅ User inserted: {email}")
+
+        # ---- Email (NON-BLOCKING) ----
         review_link = f"{BASE_URL}/admin/review?email={email}"
 
-        try:
-            if SMTP_EMAIL and SMTP_PASSWORD:
+        if SMTP_EMAIL and SMTP_PASSWORD:
+            try:
                 send_email(
                     ADMIN_EMAIL,
                     "New User Approval Request",
@@ -252,9 +263,12 @@ Review user:
 {review_link}
 """
                 )
-        except Exception as e:
-            print("⚠️ Email failed:", e)
+            except Exception as e:
+                print("⚠️ Email skipped:", e)
+        else:
+            print("⚠️ SMTP credentials missing, email not sent")
 
+        # ---- Respond immediately ----
         return jsonify({
             "message": "Signup successful. Await admin approval."
         }), 201
@@ -262,6 +276,7 @@ Review user:
     except Exception as e:
         print("❌ Signup error:", e)
         return jsonify({"message": "Internal server error"}), 500
+
 
 @app.route('/admin/review')
 def review_page():
