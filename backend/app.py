@@ -60,10 +60,6 @@ def serve_file(path):
     return send_from_directory('../frontend', path)
 
 # ================= HEALTH ======================
-@app.route('/health')
-def health():
-    return jsonify({"status": "ok"}), 200
-
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
     try:
@@ -84,20 +80,25 @@ def save_temp():
         relay2_mode = relay2.get("mode", "AUTO")
         relay3_mode = relay3.get("mode", "AUTO")
 
-        # 🔥 PURE AUTO LOGIC (ALWAYS CALCULATED)
-        if temperature > 28:
-            exhaust_state = "ON"
-            sprinkler_state = "ON"
-        elif temperature > 25:
-            exhaust_state = "ON"
-            sprinkler_state = "OFF"
-        else:
+        # ================= AUTO CONTROL LOGIC =================
+        # Condition 1: Temperature ≤ 20°C
+        if temperature <= 20:
             exhaust_state = "OFF"
             sprinkler_state = "OFF"
 
+        # Condition 2: 20°C < Temperature ≤ 28°C
+        elif temperature > 20 and temperature <= 28:
+            exhaust_state = "ON"
+            sprinkler_state = "OFF"
+
+        # Condition 3: Temperature > 28°C
+        else:
+            exhaust_state = "ON"
+            sprinkler_state = "ON"
+
         print(f"[AUTO] Temp={temperature} → Fan={exhaust_state}, Sprinkler={sprinkler_state}")
 
-        # Apply ONLY to AUTO relays
+        # Apply ONLY if relay mode is AUTO
         if relay2_mode == "AUTO":
             relay_collection.update_one(
                 {"device": "relay2"},
