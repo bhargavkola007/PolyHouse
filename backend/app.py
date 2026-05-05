@@ -126,20 +126,31 @@ def save_temp():
 # ================= SENSOR READ APIs =================
 @app.route('/sensors/data', methods=['GET'])
 def get_all_temp():
-    data = list(
-        temp_collection.find({}, {"_id": 0}).sort("timestamp", -1)
-    )
+    try:
+        data = list(
+            temp_collection.find({}, {"_id": 0}).sort("timestamp", -1)
+        )
 
-    result = []
-    for d in data:
-        result.append({
-            "waterTemperature": d.get("temperature"),
-            "timestamp": d["timestamp"]
-                .astimezone(IST)
-                .strftime("%Y-%m-%d %H:%M:%S")
-        })
+        result = []
+        for d in data:
+            ts = d.get("timestamp")
 
-    return jsonify(result), 200
+            # ✅ Handle missing or invalid timestamp
+            if ts and isinstance(ts, datetime):
+                ts = ts.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                ts = "N/A"
+
+            result.append({
+                "waterTemperature": d.get("temperature"),
+                "timestamp": ts
+            })
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("❌ GET DATA ERROR:", e)
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/sensors/latest', methods=['GET'])
 def latest_temp():
