@@ -16,7 +16,7 @@ CORS(app)
 # ================= DATABASE ====================
 MONGO_URI = os.getenv(
     "MONGO_URI",
-    "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0"
+    "mongodb+srv://bhargavkola53:12345@mydtabase.5iadk.mongodb.net/?appName=MyDtabase"
 )
 
 client = MongoClient(MONGO_URI)
