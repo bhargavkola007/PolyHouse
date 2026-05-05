@@ -1,56 +1,35 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
-from datetime import datetime, timezone, timedelta
-import smtplib
-from email.mime.text import MIMEText
+from datetime import datetime, timedelta, timezone
 import os
 from waitress import serve
 
-BASE_URL = os.getenv("BASE_URL", "https://polyhouse-qqiy.onrender.com")
-
-# ================= FLASK SETUP =================
+# 🌿 Flask App Setup
 app = Flask(__name__, static_folder='../frontend', static_url_path='/')
-CORS(app)
 
-# ================= DATABASE ====================
+# ✅ Enable CORS (allow Render frontend + ESP device)
+CORS(app, resources={r"/*": {"origins": ["*", "https://polyhouse-qqiy.onrender.com"]}})
+
+# 🌿 MongoDB Connection
 MONGO_URI = os.getenv(
     "MONGO_URI",
-    "mongodb+srv://bhargavkola53:12345@mydtabase.5iadk.mongodb.net/?appName=MyDtabase"
+    "mongodb+srv://polyhouse:12345@cluster0.alfrvs9.mongodb.net/?appName=Cluster0"
 )
 
-client = MongoClient(MONGO_URI)
-db = client["sensors"]
+try:
+    client = MongoClient(MONGO_URI)
+    db = client["sensors"]
+    temp_collection = db["temperature_data"]
+    relay_collection = db["relay_control"]
+    print("✅ MongoDB Connected Successfully")
+except Exception as e:
+    print("❌ MongoDB Connection Error:", e)
 
-temp_collection = db["temperature_data"]
-relay_collection = db["relay_control"]
-users_collection = db["users"]
-
-print("✅ MongoDB Connected")
-
-# ================= TIMEZONE ====================
+# 🌿 IST Timezone
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# ================= EMAIL CONFIG =================
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-ADMIN_EMAIL = "bhargavkola53@gmail.com"
-
-def send_email(to, subject, message):
-    msg = MIMEText(message)
-    msg["Subject"] = subject
-    msg["From"] = SMTP_EMAIL
-    msg["To"] = to
-
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.send_message(msg)
-        print("📧 Email sent")
-    except Exception as e:
-        print("❌ Email error:", e)
-
-# ================= FRONTEND ====================
+# 🌿 Serve Frontend Files (for fallback)
 @app.route('/')
 def index():
     return send_from_directory('../frontend', 'index.html')
@@ -59,275 +38,137 @@ def index():
 def serve_file(path):
     return send_from_directory('../frontend', path)
 
-# ================= HEALTH ======================
+# ✅ Health check
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
+# 🟢 POST - Receive temperature data from ESP32
 @app.route('/sensors/data', methods=['POST'])
 def save_temp():
     try:
         data = request.get_json(force=True)
-        temperature = float(data.get("temperature"))
+        temperature = data.get("temperature")
 
-        now = datetime.now(timezone.utc)
+        if temperature is None:
+            return jsonify({"error": "Missing 'temperature' field"}), 400
 
-        # Save temperature
-        temp_collection.insert_one({
-            "temperature": temperature,
-            "timestamp": now
-        })
-
-        relay2 = relay_collection.find_one({"device": "relay2"}) or {}
-        relay3 = relay_collection.find_one({"device": "relay3"}) or {}
-
-        relay2_mode = relay2.get("mode", "AUTO")
-        relay3_mode = relay3.get("mode", "AUTO")
-
-        # ================= AUTO CONTROL LOGIC =================
-        # Condition 1: Temperature ≤ 20°C
-        if temperature <= 20:
-            exhaust_state = "OFF"
-            sprinkler_state = "OFF"
-
-        # Condition 2: 20°C < Temperature ≤ 28°C
-        elif temperature > 20 and temperature <= 28:
-            exhaust_state = "ON"
-            sprinkler_state = "OFF"
-
-        # Condition 3: Temperature > 28°C
-        else:
-            exhaust_state = "ON"
-            sprinkler_state = "ON"
-
-        print(f"[AUTO] Temp={temperature} → Fan={exhaust_state}, Sprinkler={sprinkler_state}")
-
-        # Apply ONLY if relay mode is AUTO
-        if relay2_mode == "AUTO":
-            relay_collection.update_one(
-                {"device": "relay2"},
-                {"$set": {"state": exhaust_state, "timestamp": now}},
-                upsert=True
-            )
-
-        if relay3_mode == "AUTO":
-            relay_collection.update_one(
-                {"device": "relay3"},
-                {"$set": {"state": sprinkler_state, "timestamp": now}},
-                upsert=True
-            )
-
-        return jsonify({
-            "temperature": temperature,
-            "relay2": {"state": exhaust_state, "mode": relay2_mode},
-            "relay3": {"state": sprinkler_state, "mode": relay3_mode}
-        }), 200
+        doc = {
+            "temperature": float(temperature),
+            "timestamp": datetime.utcnow()  # stored in UTC
+        }
+        temp_collection.insert_one(doc)
+        print(f"🌡️ Received temperature: {temperature}")
+        return jsonify({"message": "Temperature saved successfully!"}), 200
 
     except Exception as e:
-        print("❌ AUTO ERROR:", e)
-        return jsonify({"error": "Internal server error"}), 500
-    
-# ================= SENSOR READ APIs =================
+        print("❌ Error saving temperature:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+# 🟢 GET - Fetch all temperature records (converted to IST)
+# 🟢 GET - Fetch paginated temperature records
 @app.route('/sensors/data', methods=['GET'])
-def get_all_temp():
+def get_all_data():
     try:
-        data = list(
-            temp_collection.find({}, {"_id": 0})
-        )
+        page = int(request.args.get("page", 1))
+        size = int(request.args.get("size", 10))
+
+        skip = (page - 1) * size
+
+        cursor = temp_collection.find({}, {"_id": 0}) \
+            .sort("timestamp", -1) \
+            .skip(skip) \
+            .limit(size)
 
         result = []
 
-        for d in data:
-            temperature = d.get("temperature")
-
+        for d in cursor:
             ts = d.get("timestamp")
 
-            # ✅ SAFE handling
-            if ts and isinstance(ts, datetime):
-                ts = ts.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+            if ts:
+                ts = ts.replace(tzinfo=timezone.utc).astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 ts = "N/A"
 
             result.append({
-                "waterTemperature": temperature,
+                "waterTemperature": d.get("temperature"),
                 "timestamp": ts
             })
-
-        # ✅ sort safely
-        result = sorted(result, key=lambda x: x["timestamp"], reverse=True)
 
         return jsonify(result), 200
 
     except Exception as e:
-        print("❌ GET ERROR:", str(e))
+        print("❌ Error fetching data:", e)
         return jsonify({"error": str(e)}), 500
 
+# 🟢 GET - Fetch latest temperature record (converted to IST)
 @app.route('/sensors/latest', methods=['GET'])
-def latest_temp():
-    d = temp_collection.find_one(sort=[("timestamp", -1)])
-    if not d:
-        return jsonify({"waterTemperature": None}), 404
-
-    return jsonify({
-        "waterTemperature": d["temperature"],
-        "timestamp": d["timestamp"]
-            .astimezone(IST)
-            .strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-# ================= RELAY APIs ==================
-@app.route('/sensors/control/<device>', methods=['POST'])
-def set_relay(device):
-    data = request.get_json(force=True)
-
-    mode = data.get("mode", "MANUAL").upper()
-    state = data.get("state")
-
-    if mode == "MANUAL":
-        if state not in ["ON", "OFF"]:
-            return jsonify({"error": "State required for MANUAL"}), 400
-
-    elif mode == "AUTO":
-        state = relay_collection.find_one(
-            {"device": device},
-            {"state": 1}
-        )
-        state = state["state"] if state else "OFF"
-
-    relay_collection.update_one(
-        {"device": device},
-        {"$set": {
-            "state": state,
-            "mode": mode,
-            "timestamp": datetime.now(timezone.utc)
-        }},
-        upsert=True
-    )
-
-    return jsonify({
-        "device": device,
-        "state": state,
-        "mode": mode
-    }), 200
-
-
-@app.route('/sensors/control/<device>', methods=['GET'])
-def get_relay(device):
-    r = relay_collection.find_one({"device": device})
-
-    if not r:
-        return jsonify({
-            "device": device,
-            "state": "OFF",
-            "mode": "AUTO"
-        }), 200
-
-    return jsonify({
-        "device": device,
-        "state": r.get("state", "OFF"),
-        "mode": r.get("mode", "AUTO"),
-        "timestamp": r["timestamp"]
-            .astimezone(IST)
-            .strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-# ================= AUTH ========================
-@app.route('/signup', methods=['POST'])
-def signup():
-    print("👉 Signup API hit")
-
+def get_latest():
     try:
-        data = request.get_json(force=True, silent=True)
-        if not data:
-            return jsonify({"message": "Invalid request"}), 400
+        latest = temp_collection.find_one(sort=[("timestamp", -1)])
+        if not latest:
+            return jsonify({"temperature": None}), 404
 
-        name = data.get("name", "").strip()
-        email = data.get("email", "").strip().lower()
-        password = data.get("password", "").strip()
-
-        if not name or not email or not password:
-            return jsonify({"message": "All fields required"}), 400
-
-        if users_collection.find_one({"email": email}):
-            return jsonify({"message": "Email already exists"}), 409
-
-        created_time = datetime.now(timezone.utc)
-
-        users_collection.insert_one({
-            "name": name,
-            "email": email,
-            "password": password,  # hash later
-            "status": "PENDING",
-            "createdAt": created_time
-        })
-
-        print(f"✅ User created: {email}")
-
-        # 🚫 EMAIL DISABLED ON RENDER (IMPORTANT)
-        print("⚠️ Email sending skipped (Render SMTP issue)")
+        ist_time = latest["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
 
         return jsonify({
-            "message": "Signup successful. Await admin approval."
-        }), 201
+            "_id": str(latest["_id"]),
+            "waterTemperature": latest.get("temperature"),
+            "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
+        }), 200
+    except Exception as e:
+        print("❌ Error fetching latest:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+# 🟢 POST - Control relay ON/OFF
+@app.route('/sensors/control/<device>', methods=['POST'])
+def control_device(device):
+    try:
+        data = request.get_json(force=True)
+        state = data.get("state", "").upper()
+
+        if state not in ["ON", "OFF"]:
+            return jsonify({"error": "Invalid state (use ON or OFF)"}), 400
+
+        relay_collection.update_one(
+            {"device": device},
+            {"$set": {"state": state, "timestamp": datetime.utcnow()}},
+            upsert=True
+        )
+
+        print(f"⚡ Relay '{device}' turned {state}")
+        return jsonify({"message": f"{device} turned {state}"}), 200
 
     except Exception as e:
-        print("❌ Signup error:", str(e))
-        return jsonify({"message": "Internal server error"}), 500
+        print("❌ Relay control error:", e)
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/admin/review')
-def review_page():
-    return send_from_directory('../frontend', 'admin-review.html')
 
-@app.route('/admin/approve')
-def approve():
-    email = request.args.get("email")
+# 🟢 GET - Get current relay state (converted to IST)
+@app.route('/sensors/control/<device>', methods=['GET'])
+def get_relay_state(device):
+    try:
+        record = relay_collection.find_one({"device": device})
+        if record:
+            ist_time = record["timestamp"].replace(tzinfo=timezone.utc).astimezone(IST)
+            return jsonify({
+                "device": device,
+                "state": record["state"],
+                "timestamp": ist_time.strftime("%Y-%m-%d %H:%M:%S")
+            }), 200
+        else:
+            # Default state is OFF
+            return jsonify({"device": device, "state": "OFF"}), 200
+    except Exception as e:
+        print("❌ Relay state error:", e)
+        return jsonify({"error": str(e)}), 500
 
-    users_collection.update_one(
-        {"email": email},
-        {"$set": {
-            "status": "APPROVED",
-            "approvedAt": datetime.now(timezone.utc)
-        }}
-    )
 
-    send_email(email, "Account Approved", "Your account is approved.")
-    return "✅ User approved"
-
-@app.route('/admin/reject')
-def reject():
-    email = request.args.get("email")
-
-    users_collection.update_one(
-        {"email": email},
-        {"$set": {
-            "status": "REJECTED",
-            "rejectedAt": datetime.now(timezone.utc)
-        }}
-    )
-
-    send_email(email, "Account Rejected", "Your signup request was rejected.")
-    return "❌ User rejected"
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json(force=True)
-    email = data.get("email")
-    password = data.get("password")
-
-    user = users_collection.find_one({"email": email})
-
-    if not user or user.get("password") != password:
-        return jsonify({"message": "Invalid credentials"}), 401
-
-    if user.get("status") != "APPROVED":
-        return jsonify({
-            "verified": False,
-            "message": "Your account is awaiting admin approval."
-        }), 403
-
-    return jsonify({
-        "verified": True,
-        "token": "dummy-token"
-    }), 200
-
-# ================= RUN =========================
+# 🌿 Run app (Waitress for production)
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
-    print(f"🚀 Server running on {port}")
+    print(f"🚀 Server running on port {port}")
     serve(app, host="0.0.0.0", port=port)
