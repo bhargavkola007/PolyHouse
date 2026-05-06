@@ -1,3 +1,7 @@
+// const API_ROOT =
+//   window.location.hostname === "localhost"
+//     ? "http://10.117.239.84:8080/sensors"
+//     : "https://polyhouse-060s.onrender.com/sensors";
 const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");
@@ -8,139 +12,61 @@ const pageSizeSelect = document.getElementById("pageSize");
 const searchBox = document.getElementById("searchBox");
 const viewDataBtn = document.getElementById("viewDataBtn");
 
+let allData = [];
 let page = 1;
 let size = parseInt(pageSizeSelect.value);
-let currentData = [];
-let isLoading = false;
 
-// ================= LOAD DATA =================
 async function loadData() {
-  if (isLoading) return; // prevent spam clicks
-  isLoading = true;
-
   try {
-    size = parseInt(pageSizeSelect.value);
-
-    // 🔄 Show loading
-    tbody.innerHTML = `<tr><td colspan="3">Loading...</td></tr>`;
-
-    const res = await fetch(`${API_ROOT}/data?page=${page}&size=${size}`);
+    const res = await fetch(`${API_ROOT}/data`);
 
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
 
-    const data = await res.json();
-
-    // ❗ If no data and page > 1 → go back
-    if (data.length === 0 && page > 1) {
-      page--;
-      isLoading = false;
-      return loadData();
-    }
-
-    currentData = data;
+    allData = await res.json();
     renderTable();
-
   } catch (err) {
     console.error("Error fetching data:", err);
-    tbody.innerHTML = `<tr><td colspan="3">⚠ Server error</td></tr>`;
+    alert("Unable to load sensor data");
   }
-
-  isLoading = false;
 }
 
-// ================= RENDER =================
-function renderTable() {
-  const search = searchBox.value.trim().toLowerCase();
-
-  let filtered = currentData.filter(d =>
-    d.waterTemperature?.toString().toLowerCase().includes(search) ||
-    d.timestamp?.toLowerCase().includes(search)
-  );
-
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="3">No data found</td></tr>`;
-  } else {
-    tbody.innerHTML = filtered.map((d, i) => `
-      <tr>
-        <td>${(page - 1) * size + i + 1}</td>
-        <td>${d.waterTemperature ?? '-'}</td>
-        <td>${d.timestamp ?? '-'}</td>
-      </tr>
-    `).join('');
-  }
-
-  pageInfo.textContent = `Page ${page}`;
-  prevBtn.disabled = page <= 1;
-  nextBtn.disabled = currentData.length < size;
-}
-
-// ================= PAGINATION =================
-prevBtn.addEventListener("click", () => {
-  if (page > 1) {
-    page--;
-    loadData();
-  }
-});
-
-nextBtn.addEventListener("click", () => {
-  page++;
-  loadData();
-});
-
-// ================= PAGE SIZE =================
-pageSizeSelect.addEventListener("change", () => {
-  page = 1;
-  loadData();
-});
-
-// ================= SEARCH (DEBOUNCE) =================
-let searchTimeout;
-
-searchBox.addEventListener("input", () => {
-  clearTimeout(searchTimeout);
-
-  searchTimeout = setTimeout(() => {
-    renderTable();
-  }, 300);
-});
-
-// ================= EXPORT =================
 function exportToCSV() {
-  if (!currentData.length) {
+  if (!allData.length) {
     alert("No data available to export!");
     return;
   }
 
+  // Create CSV header
   const headers = ["S.No", "Temperature (°C)", "Timestamp"];
-
-  const rows = currentData.map((d, i) => [
-    (page - 1) * size + i + 1,
+  const rows = allData.map((d, i) => [
+    i + 1,
     d.waterTemperature ?? "-",
     d.timestamp ?? "-"
   ]);
 
+  // Combine headers and rows
   const csvContent = [headers, ...rows]
-    .map(row => row.join(","))
+    .map(e => e.join(","))
     .join("\n");
 
+  // Create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-
   const link = document.createElement("a");
-  link.href = url;
-  link.download = `polyhouse_page_${page}.csv`;
+  link.setAttribute("href", url);
+  link.setAttribute("download", `polyhouse_data_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
+// ===== PROFILE MENU & LOGOUT =====
 
-// ================= PROFILE =================
+// Remove profile icon if not logged in
 const profileMenu = document.querySelector(".profile-menu");
-
-if (typeof token === "undefined" || !token) {
-  if (profileMenu) profileMenu.remove();
+if (!token && profileMenu) {
+  profileMenu.remove();
 }
 
 const profileIcon = document.getElementById("profileIcon");
@@ -148,16 +74,19 @@ const dropdown = document.getElementById("profileDropdown");
 const logoutBtn = document.getElementById("logoutBtn");
 
 if (profileIcon && dropdown && logoutBtn) {
+  // Toggle dropdown
   profileIcon.addEventListener("click", (e) => {
     e.stopPropagation();
     dropdown.classList.toggle("active");
   });
 
+  // Logout
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("token");
     window.location.href = "login.html";
   });
 
+  // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".profile-menu")) {
       dropdown.classList.remove("active");
@@ -165,15 +94,62 @@ if (profileIcon && dropdown && logoutBtn) {
   });
 }
 
-// ================= NAVIGATION =================
-if (viewDataBtn) {
-  viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
+function renderTable() {
+  size = parseInt(pageSizeSelect.value);
+  const search = searchBox.value.trim().toLowerCase();
+
+  let filtered = allData.filter(
+    d =>
+      d.waterTemperature?.toString().toLowerCase().includes(search) ||
+      d.timestamp?.toLowerCase().includes(search)
+  );
+
+  const totalPages = Math.ceil(filtered.length / size);
+  page = Math.max(1, Math.min(page, totalPages));
+
+  const start = (page - 1) * size;
+  const pageData = filtered.slice(start, start + size);
+
+  tbody.innerHTML = pageData
+    .map(
+      (d, i) => `
+      <tr>
+        <td>${start + i + 1}</td>
+        <td>${d.waterTemperature ?? '-'}</td>
+        <td>${d.timestamp ?? '-'}</td>
+      </tr>
+    `
+    )
+    .join('');
+
+  pageInfo.textContent = `Page ${page} of ${totalPages || 1} (${filtered.length} records)`;
+  prevBtn.disabled = page <= 1;
+  nextBtn.disabled = page >= totalPages;
 }
 
-const exportBtn = document.getElementById("exportBtn");
-if (exportBtn) {
-  exportBtn.addEventListener("click", exportToCSV);
-}
+pageSizeSelect.addEventListener("change", () => {
+  page = 1;
+  renderTable();
+});
 
-// ================= INIT =================
+searchBox.addEventListener("input", () => {
+  page = 1;
+  renderTable();
+});
+
+prevBtn.addEventListener("click", () => {
+  if (page > 1) {
+    page--;
+    renderTable();
+  }
+});
+
+nextBtn.addEventListener("click", () => {
+  page++;
+  renderTable();
+});
+
+viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
+document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+
 loadData();
