@@ -11,11 +11,18 @@ const viewDataBtn = document.getElementById("viewDataBtn");
 let page = 1;
 let size = parseInt(pageSizeSelect.value);
 let currentData = [];
+let isLoading = false;
 
-// ✅ LOAD PAGINATED DATA (IMPORTANT FIX)
+// ================= LOAD DATA =================
 async function loadData() {
+  if (isLoading) return; // prevent spam clicks
+  isLoading = true;
+
   try {
     size = parseInt(pageSizeSelect.value);
+
+    // 🔄 Show loading
+    tbody.innerHTML = `<tr><td colspan="3">Loading...</td></tr>`;
 
     const res = await fetch(`${API_ROOT}/data?page=${page}&size=${size}`);
 
@@ -23,16 +30,27 @@ async function loadData() {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
 
-    currentData = await res.json();
+    const data = await res.json();
+
+    // ❗ If no data and page > 1 → go back
+    if (data.length === 0 && page > 1) {
+      page--;
+      isLoading = false;
+      return loadData();
+    }
+
+    currentData = data;
     renderTable();
 
   } catch (err) {
     console.error("Error fetching data:", err);
-    alert("Server error. Please try again.");
+    tbody.innerHTML = `<tr><td colspan="3">⚠ Server error</td></tr>`;
   }
+
+  isLoading = false;
 }
 
-// ✅ RENDER TABLE (ONLY CURRENT PAGE DATA)
+// ================= RENDER =================
 function renderTable() {
   const search = searchBox.value.trim().toLowerCase();
 
@@ -41,20 +59,24 @@ function renderTable() {
     d.timestamp?.toLowerCase().includes(search)
   );
 
-  tbody.innerHTML = filtered.map((d, i) => `
-    <tr>
-      <td>${(page - 1) * size + i + 1}</td>
-      <td>${d.waterTemperature ?? '-'}</td>
-      <td>${d.timestamp ?? '-'}</td>
-    </tr>
-  `).join('');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="3">No data found</td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map((d, i) => `
+      <tr>
+        <td>${(page - 1) * size + i + 1}</td>
+        <td>${d.waterTemperature ?? '-'}</td>
+        <td>${d.timestamp ?? '-'}</td>
+      </tr>
+    `).join('');
+  }
 
   pageInfo.textContent = `Page ${page}`;
   prevBtn.disabled = page <= 1;
-  nextBtn.disabled = currentData.length < size; // no more pages if less data
+  nextBtn.disabled = currentData.length < size;
 }
 
-// ✅ PAGINATION BUTTONS
+// ================= PAGINATION =================
 prevBtn.addEventListener("click", () => {
   if (page > 1) {
     page--;
@@ -67,16 +89,24 @@ nextBtn.addEventListener("click", () => {
   loadData();
 });
 
-// ✅ PAGE SIZE CHANGE
+// ================= PAGE SIZE =================
 pageSizeSelect.addEventListener("change", () => {
   page = 1;
   loadData();
 });
 
-// ✅ SEARCH (only current page)
-searchBox.addEventListener("input", renderTable);
+// ================= SEARCH (DEBOUNCE) =================
+let searchTimeout;
 
-// ✅ EXPORT ONLY CURRENT PAGE (SAFE)
+searchBox.addEventListener("input", () => {
+  clearTimeout(searchTimeout);
+
+  searchTimeout = setTimeout(() => {
+    renderTable();
+  }, 300);
+});
+
+// ================= EXPORT =================
 function exportToCSV() {
   if (!currentData.length) {
     alert("No data available to export!");
@@ -101,11 +131,14 @@ function exportToCSV() {
   const link = document.createElement("a");
   link.href = url;
   link.download = `polyhouse_page_${page}.csv`;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 }
 
-// ===== PROFILE MENU & LOGOUT =====
+// ================= PROFILE =================
 const profileMenu = document.querySelector(".profile-menu");
+
 if (typeof token === "undefined" || !token) {
   if (profileMenu) profileMenu.remove();
 }
@@ -132,9 +165,15 @@ if (profileIcon && dropdown && logoutBtn) {
   });
 }
 
-// ✅ NAVIGATION
-viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
-document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+// ================= NAVIGATION =================
+if (viewDataBtn) {
+  viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
+}
 
-// 🚀 INITIAL LOAD
+const exportBtn = document.getElementById("exportBtn");
+if (exportBtn) {
+  exportBtn.addEventListener("click", exportToCSV);
+}
+
+// ================= INIT =================
 loadData();
