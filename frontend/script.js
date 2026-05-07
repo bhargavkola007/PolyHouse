@@ -1,7 +1,3 @@
-// const API_ROOT =
-//   window.location.hostname === "localhost"
-//     ? "http://10.117.239.84:8080/sensors"
-//     : "https://polyhouse-060s.onrender.com/sensors";
 const API_ROOT = "https://polyhouse-qqiy.onrender.com/sensors";
 
 const tbody = document.querySelector("#dataTable tbody");
@@ -11,20 +7,31 @@ const pageInfo = document.getElementById("pageInfo");
 const pageSizeSelect = document.getElementById("pageSize");
 const searchBox = document.getElementById("searchBox");
 const viewDataBtn = document.getElementById("viewDataBtn");
+const exportBtn = document.getElementById("exportBtn");
 
 let allData = [];
 let page = 1;
 let size = parseInt(pageSizeSelect.value);
+let totalPages = 1;
+let totalRecords = 0;
 
+// ================= LOAD PAGINATED DATA =================
 async function loadData() {
   try {
-    const res = await fetch(`${API_ROOT}/data`);
+    size = parseInt(pageSizeSelect.value);
+
+    const res = await fetch(`${API_ROOT}/data?page=${page}&size=${size}`);
 
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
 
-    allData = await res.json();
+    const result = await res.json();
+
+    allData = result.data || [];
+    totalRecords = result.total || 0;
+    totalPages = result.totalPages || Math.ceil(totalRecords / size) || 1;
+
     renderTable();
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -32,40 +39,48 @@ async function loadData() {
   }
 }
 
+// ================= EXPORT CURRENT PAGE CSV =================
 function exportToCSV() {
   if (!allData.length) {
     alert("No data available to export!");
     return;
   }
 
-  // Create CSV header
   const headers = ["S.No", "Temperature (°C)", "Timestamp"];
+
   const rows = allData.map((d, i) => [
-    i + 1,
+    (page - 1) * size + i + 1,
     d.waterTemperature ?? "-",
     d.timestamp ?? "-"
   ]);
 
-  // Combine headers and rows
   const csvContent = [headers, ...rows]
-    .map(e => e.join(","))
+    .map(row => row.join(","))
     .join("\n");
 
-  // Create a blob and trigger download
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;"
+  });
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+
   link.setAttribute("href", url);
-  link.setAttribute("download", `polyhouse_data_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute(
+    "download",
+    `polyhouse_data_page_${page}_${new Date().toISOString().slice(0, 10)}.csv`
+  );
+
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
-// ===== PROFILE MENU & LOGOUT =====
 
-// Remove profile icon if not logged in
+// ================= PROFILE MENU & LOGOUT =================
+
 const profileMenu = document.querySelector(".profile-menu");
-if (!token && profileMenu) {
+
+if (typeof token !== "undefined" && !token && profileMenu) {
   profileMenu.remove();
 }
 
@@ -74,19 +89,16 @@ const dropdown = document.getElementById("profileDropdown");
 const logoutBtn = document.getElementById("logoutBtn");
 
 if (profileIcon && dropdown && logoutBtn) {
-  // Toggle dropdown
   profileIcon.addEventListener("click", (e) => {
     e.stopPropagation();
     dropdown.classList.toggle("active");
   });
 
-  // Logout
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("token");
     window.location.href = "login.html";
   });
 
-  // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".profile-menu")) {
       dropdown.classList.remove("active");
@@ -94,8 +106,8 @@ if (profileIcon && dropdown && logoutBtn) {
   });
 }
 
+// ================= RENDER TABLE =================
 function renderTable() {
-  size = parseInt(pageSizeSelect.value);
   const search = searchBox.value.trim().toLowerCase();
 
   let filtered = allData.filter(
@@ -104,52 +116,57 @@ function renderTable() {
       d.timestamp?.toLowerCase().includes(search)
   );
 
-  const totalPages = Math.ceil(filtered.length / size);
-  page = Math.max(1, Math.min(page, totalPages));
-
-  const start = (page - 1) * size;
-  const pageData = filtered.slice(start, start + size);
-
-  tbody.innerHTML = pageData
+  tbody.innerHTML = filtered
     .map(
       (d, i) => `
       <tr>
-        <td>${start + i + 1}</td>
-        <td>${d.waterTemperature ?? '-'}</td>
-        <td>${d.timestamp ?? '-'}</td>
+        <td>${(page - 1) * size + i + 1}</td>
+        <td>${d.waterTemperature ?? "-"}</td>
+        <td>${d.timestamp ?? "-"}</td>
       </tr>
     `
     )
-    .join('');
+    .join("");
 
-  pageInfo.textContent = `Page ${page} of ${totalPages || 1} (${filtered.length} records)`;
+  pageInfo.textContent =
+    `Page ${page} of ${totalPages} (${totalRecords} records)`;
+
   prevBtn.disabled = page <= 1;
   nextBtn.disabled = page >= totalPages;
 }
 
+// ================= EVENTS =================
 pageSizeSelect.addEventListener("change", () => {
   page = 1;
-  renderTable();
+  loadData();
 });
 
 searchBox.addEventListener("input", () => {
-  page = 1;
   renderTable();
 });
 
 prevBtn.addEventListener("click", () => {
   if (page > 1) {
     page--;
-    renderTable();
+    loadData();
   }
 });
 
 nextBtn.addEventListener("click", () => {
-  page++;
-  renderTable();
+  if (page < totalPages) {
+    page++;
+    loadData();
+  }
 });
 
-viewDataBtn.onclick = () => window.location.href = 'viewdata.html';
-document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+if (viewDataBtn) {
+  viewDataBtn.onclick = () => {
+    window.location.href = "viewdata.html";
+  };
+}
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", exportToCSV);
+}
 
 loadData();

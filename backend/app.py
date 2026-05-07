@@ -26,6 +26,7 @@ temp_collection = db["temperature_data"]
 relay_collection = db["relay_control"]
 users_collection = db["users"]
 
+temp_collection.create_index([("timestamp", -1)])
 print("✅ MongoDB Connected")
 
 # ================= TIMEZONE ====================
@@ -126,20 +127,44 @@ def save_temp():
 # ================= SENSOR READ APIs =================
 @app.route('/sensors/data', methods=['GET'])
 def get_all_temp():
-    data = list(
-        temp_collection.find({}, {"_id": 0}).sort("timestamp", -1)
-    )
+    try:
+        page = int(request.args.get("page", 1))
+        size = int(request.args.get("size", 20))
 
-    result = []
-    for d in data:
-        result.append({
-            "waterTemperature": d.get("temperature"),
-            "timestamp": d["timestamp"]
-                .astimezone(IST)
-                .strftime("%Y-%m-%d %H:%M:%S")
-        })
+        page = max(page, 1)
+        size = max(1, min(size, 100))
 
-    return jsonify(result), 200
+        skip = (page - 1) * size
+
+        cursor = temp_collection.find({}, {"_id": 0, "temperature": 1, "timestamp": 1}) \
+            .sort("timestamp", -1) \
+            .skip(skip) \
+            .limit(size)
+
+        data = []
+
+        for d in cursor:
+            ts = d.get("timestamp")
+
+            data.append({
+                "waterTemperature": d.get("temperature"),
+                "timestamp": ts.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S") if ts else "-"
+            })
+
+        total = temp_collection.estimated_document_count()
+        total_pages = (total + size - 1) // size
+
+        return jsonify({
+            "data": data,
+            "total": total,
+            "page": page,
+            "size": size,
+            "totalPages": total_pages
+        }), 200
+
+    except Exception as e:
+        print("❌ Pagination error:", e)
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/sensors/latest', methods=['GET'])
 def latest_temp():
